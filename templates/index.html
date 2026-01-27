@@ -1,0 +1,20 @@
+<h1>글 목록</h1>
+
+{% if logged_in %}
+<p>{{ user.username }}님, 환영합니다! <a href="/logout">로그아웃</a> | <a href="/write">글 작성</a></p>
+{% else %}
+<p><a href="/login">로그인</a> | <a href="/register">회원가입</a></p>
+{% endif %}
+
+<ul>
+{% for post in posts %}
+    <li>
+        <h3>{{ post.title }}</h3>
+        <p>{{ post.content }}</p>
+        <small>작성자: {{ post.author.username }} / 작성시간: {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+        {% if logged_in and post.author_id == user.id %}
+            | <a href="/delete/{{ post.id }}">삭제</a>
+        {% endif %}
+    </li>
+{% endfor %}
+</ul>

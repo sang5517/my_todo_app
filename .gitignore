@@ -1,0 +1,13 @@
+# Python 캐시
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# DB 파일
+*.db
+
+# IDE/OS 파일
+*.idea/
+*.vscode/
+.DS_Store

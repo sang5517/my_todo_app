@@ -124,6 +124,31 @@ def like_post(post_id):
         "count": like_count
     })
 
+@login_required
+@like_bp.route('/comment_like/<int:comment_id>', methods=['POST'])
+def like_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+    user_id = session['user_id']
+
+    existing_like = Like.query.filter_by(
+        user_id=user_id,
+        comment_id=comment.id
+    ).first()
+
+    if existing_like:
+        db.session.delete(existing_like)
+    else:
+        new_like = Like(user_id=user_id, comment_id=comment.id)
+        db.session.add(new_like)
+
+    db.session.commit()
+
+    like_count = Like.query.filter_by(comment_id=comment.id).count()
+
+    return jsonify({
+        "count": like_count
+    })
+
 @post_bp.route('/qna')
 def qna():
     # Q&A 카테고리 글만 가져오기

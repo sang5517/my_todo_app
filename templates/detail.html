@@ -24,7 +24,12 @@
     {% for comment in post.comments %}
     <li>
         {{ comment.content }} - {{ comment.user.username }}
-
+        
+        <!-- 댓글 좋아요 -->
+        <button class="comment-like-btn" data-comment-id="{{ comment.id }}">
+            👍 (<span class="comment-like-count">{{ comment.likes|length }}</span>)
+        </button>
+        
         {% if user and comment.user_id == user.id %}
             <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}">삭제</a>
         {% endif %}
@@ -59,5 +64,19 @@ if (likeBtn) {
     });
 }
 </script>
+<script>
+document.querySelectorAll('.comment-like-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const commentId = this.dataset.commentId;
 
+        fetch(`/comment_like/${commentId}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            this.querySelector('.comment-like-count').textContent = data.count;
+        });
+    });
+});
+</script>
 {% endblock %}

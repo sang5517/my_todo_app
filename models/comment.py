@@ -9,3 +9,6 @@ class Comment(db.Model):
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    likes = db.relationship('Like', backref='commit', lazy=True)
+
+    

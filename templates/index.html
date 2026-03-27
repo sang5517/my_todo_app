@@ -1,20 +1,29 @@
-<h1>글 목록</h1>
+{% extends "base.html" %}
 
+{% block title %}홈{% endblock %}
+
+{% block content %}
+<h2>최근 글</h2>
 {% if logged_in %}
-<p>{{ user.username }}님, 환영합니다! <a href="/logout">로그아웃</a> | <a href="/write">글 작성</a></p>
-{% else %}
-<p><a href="/login">로그인</a> | <a href="/register">회원가입</a></p>
+    <a href="{{ url_for('post.write', category='general') }}">글 작성</a>
 {% endif %}
+<div class="posts">
+    {% for post in posts %}
+    <div class="post-card">
+        <a href="{{ url_for('post.detail', post_id=post.id) }}">
+            {{ post.title }}
+        </a>
+        <small>
+            작성자: - {{ post.author.username }} |
+            {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+             (조회수: {{ post.views }}) 
+        </small>
 
-<ul>
-{% for post in posts %}
-    <li>
-        <h3>{{ post.title }}</h3>
-        <p>{{ post.content }}</p>
-        <small>작성자: {{ post.author.username }} / 작성시간: {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
         {% if logged_in and post.author_id == user.id %}
-            | <a href="/delete/{{ post.id }}">삭제</a>
+            <a href="{{ url_for('post.update', post_id=post.id) }}">수정</a> |
+            <a href="{{ url_for('post.delete', post_id=post.id) }}" style="color:red;">삭제</a>
         {% endif %}
-    </li>
+    </div>
 {% endfor %}
-</ul>
+</div>
+{% endblock %}

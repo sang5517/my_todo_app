@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>꿀팁 모음</h2>
+
+<a href="{{ url_for('post.write', category='tips') }}">글 작성</a>
+
+<ul>
+{% for post in posts %}
+    <li>
+        <a href="{{ url_for('post.detail', post_id=post.id) }}">
+            {{ post.title }}
+        </a>
+        작성자: - {{ post.author.username }} |
+            {{ post.created_at.strftime('%Y-%m-%d %H:%M') }}
+             (조회수: {{ post.views }}) 
+
+        {% if user and post.author_id == user.id %}
+            <a href="{{ url_for('post.update', post_id=post.id) }}">수정</a>
+            <a href="{{ url_for('post.delete', post_id=post.id) }}" onclick="return confirm('정말 삭제하시겠습니까?')">삭제</a>
+        {% endif %}
+    </li>
+{% endfor %}
+</ul>
+
+{% endblock %}

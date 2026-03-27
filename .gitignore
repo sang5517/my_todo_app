@@ -4,8 +4,12 @@ __pycache__/
 *.pyo
 *.pyd
 
+# 환경 변수
+.env
+
 # DB 파일
 *.db
+instance/  # SQLite DB가 instance 폴더 안에 있으면 폴더 전체를 무시
 
 # IDE/OS 파일
 *.idea/

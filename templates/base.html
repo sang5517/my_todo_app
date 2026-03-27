@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}My Blog{% endblock %}</title>
+    <style>
+        body { margin:0; font-family: Arial, sans-serif; }
+
+        header {
+            background-color:#f2f2f2;
+            padding:10px;
+            display:flex;
+            align-items:center;
+            justify-content:space-between; /* 왼쪽/오른쪽 분리 */
+            position:relative;
+        }
+
+        /* 왼쪽 영역: 로고 + 햄버거 */
+        .left-header {
+            display:flex;
+            align-items:center;
+        }
+
+        header h1 a { 
+            text-decoration:none; 
+            color:black; 
+            font-size:24px; 
+            font-weight:bold; 
+        }
+
+        /* 햄버거 버튼 */
+        #hamburgerBtn {
+            margin-left:10px;
+            display:flex;
+            flex-direction:column;
+            justify-content:space-between;
+            width:25px;
+            height:18px;
+            background:none;
+            border:none;
+            cursor:pointer;
+            padding:0;
+        }
+
+        #hamburgerBtn span {
+            display:block;
+            height:3px;
+            width:100%;
+            background:black;
+        }
+
+        /* 드롭다운 메뉴 */
+        #communityMenu {
+            display:none;
+            position:absolute;
+            top:50px;
+            left:10px;
+            background:#fff;
+            border:1px solid #ccc;
+            border-radius:5px;
+            box-shadow:0 2px 6px rgba(0,0,0,0.2);
+            min-width:120px;
+            z-index:100;
+        }
+
+        #communityMenu a {
+            display:block;
+            padding:8px 12px;
+            text-decoration:none;
+            color:black;
+        }
+
+        #communityMenu a:hover {
+            background:#f0f0f0;
+        }
+
+        /* 오른쪽 영역: 사용자 메뉴 */
+        nav.user-nav a, nav.user-nav span {
+            margin-left:10px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <!-- 왼쪽: 로고 + 햄버거 -->
+    <div class="left-header">
+        <button id="hamburgerBtn">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        
+        <h1>
+            <a href="/">🏠 My Blog</a>
+        </h1>
+
+        <!-- 드롭다운 메뉴 -->
+        <nav id="communityMenu">
+            <a href="/qna">Q&A</a>
+            <a href="/faq">FAQ</a>
+            <a href="/tips">꿀팁 모음</a>
+        </nav>
+    </div>
+
+    <!-- 오른쪽: 로그인/회원정보 -->
+    <nav class="user-nav">
+        {% if logged_in %}
+            <span>{{ user.username }}님 환영합니다!</span>
+            <a href="/logout">로그아웃</a>
+        {% else %}
+            <a href="/login">로그인</a>
+            <a href="/register">회원가입</a>
+        {% endif %}
+    </nav>
+</header>
+
+<hr>
+
+{% block content %}
+{% endblock %}
+
+<script>
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const communityMenu = document.getElementById('communityMenu');
+
+    hamburgerBtn.addEventListener('click', () => {
+        communityMenu.style.display = communityMenu.style.display === 'none' ? 'block' : 'none';
+    });
+
+    window.addEventListener('click', function(e) {
+        if (!hamburgerBtn.contains(e.target) && !communityMenu.contains(e.target)) {
+            communityMenu.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>

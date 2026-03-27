@@ -1,20 +1,76 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>로그인</title>
-</head>
-<body>
-    <h1>로그인</h1>
-    <form method="post">
-        <label>아이디:</label>
-        <input type="text" name="username" required><br>
-        <label>비밀번호:</label>
-        <input type="password" name="password" required><br>
-        <button type="submit">로그인</button>
-    </form>
-    {% if error %}
-    <p style="color: red;">{{ error }}</p>
+{% extends "base.html" %}
+
+{% block title %}로그인{% endblock %}
+
+{% block content %}
+
+<style>
+    /* 모달 간단 스타일 */
+    #linkModal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        justify-content: center;
+        align-items: center;
+    }
+    #linkModalContent {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+    }
+</style>
+
+<h1>로그인</h1>
+
+<form method="post">
+    <label>아이디:</label>
+    <input type="email" name="email" required><br>
+
+    <label>비밀번호:</label>
+    <input type="password" name="password" required><br>
+
+    <button type="submit">로그인</button>
+
+    <p>또는 외부계정으로 로그인:</p>
+    <a href="{{ url_for('google.login') }}">
+        <button type="button">Google 로그인</button>
+    </a>
+
+    <a href="/login/kakao">
+        <button type="button" style="background-color:#F7E600;">
+            Kakao 로그인
+        </button>
+    </a>
+</form>
+
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% endif %}
+
+<p>회원이 아니신가요? <a href="/register">회원가입</a></p>
+
+
+<!-- 🔥 기존 모달 그대로 유지 -->
+<div id="linkModal">
+    <div id="linkModalContent">
+        <h3 id="linkEmail"></h3>
+        <p>이 소셜 계정을 기존 계정에 연동하시겠습니까?</p>
+        <form method="post" action="/social/link">
+            <button name="provider" value="google">Google 연동</button>
+            <button name="provider" value="kakao">Kakao 연동</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    {% if pending_link %}
+        const modal = document.getElementById('linkModal');
+        const emailText = document.getElementById('linkEmail');
+        emailText.innerText = "{{ pending_link }}";
+        modal.style.display = 'flex';
     {% endif %}
-    <p>회원이 아니신가요? <a href="/register">회원가입</a></p>
-</body>
-</html>
+</script>
+
+{% endblock %}

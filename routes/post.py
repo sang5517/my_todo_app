@@ -3,9 +3,12 @@ from models.post import Post
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
+from models.like import Like
+from models.comment import Comment
+from flask import jsonify
 from utils.auth import login_required
 post_bp = Blueprint('post', __name__)
-
+like_bp = Blueprint('like', __name__)
 
 @post_bp.route('/')
 def index():
@@ -96,6 +99,30 @@ def update(post_id):
 
     # GET 요청 시 기존 글 내용 폼에 전달
     return render_template('update.html', post=post)
+
+@login_required
+@like_bp.route('/like/<int:post_id>', methods=['POST'])
+def like_post(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    user_id = session['user_id']
+
+    existing_like = Like.query.filter_by(user_id=user_id, post_id=post.id).first()
+
+    if existing_like:
+        db.session.delete(existing_like)
+    else:
+        new_like = Like(user_id=user_id, post_id=post.id)
+        db.session.add(new_like)
+
+    db.session.commit()
+
+    # 🔥 핵심: JSON으로 응답
+    like_count = Like.query.filter_by(post_id=post.id).count()
+
+    return jsonify({
+        "count": like_count
+    })
 
 @post_bp.route('/qna')
 def qna():

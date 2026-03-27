@@ -8,7 +8,11 @@ class Post(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     category = db.Column(db.String(50), default='general')
-    views = db.Column(db.Integer, default = 0)
-    
+    views = db.Column(db.Integer, default=0)
 
-    
+    comments = db.relationship(
+        'Comment',
+        backref='post',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )

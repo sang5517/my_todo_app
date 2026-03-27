@@ -7,6 +7,14 @@
 <p>조회수: {{ post.views }}</p>
 <p>{{ post.content }}</p>
 
+<!-- 좋아요 버튼 -->
+{% if logged_in %}
+<button id="like-btn" data-post-id="{{ post.id }}">
+    👍 좋아요 (<span id="like-count">{{ post.likes|length }}</span>)
+</button>
+{% else %}
+<p>좋아요 수: {{ post.likes|length }}</p>
+{% endif %}
 <hr>
 
 <h3>댓글</h3>
@@ -33,5 +41,23 @@
     <button type="submit">작성</button>
 </form>
 {% endif %}
+
+<script>
+const likeBtn = document.getElementById('like-btn');
+
+if (likeBtn) {
+    likeBtn.addEventListener('click', function() {
+        const postId = this.dataset.postId;
+
+        fetch(`/like/${postId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('like-count').textContent = data.count;
+        });
+    });
+}
+</script>
 
 {% endblock %}

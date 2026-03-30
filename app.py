@@ -80,7 +80,7 @@ def google_login_process():
 
     user_info = resp.json()
     email = user_info['email']
-    user = User.query.filter_by(username=email).first()
+    user = User.query.filter_by(email=email).first()
 
     if user:
         if user.provider == "local":
@@ -90,7 +90,16 @@ def google_login_process():
             session['user_id'] = user.id
             return redirect("/")
     else:
-        user = User(username=email, password=None, provider="google")
+        username = email.split("@")[0]
+
+        user = User(
+            username=username,
+            email=email,
+            password=None,
+            provider="kakao",
+            is_verified=True
+        )
+
         db.session.add(user)
         db.session.commit()
         session['user_id'] = user.id
@@ -135,8 +144,11 @@ def kakao_login_process():
         return f"사용자 정보 요청 실패: {user_response.text}"
 
     user_info = user_response.json()
-    email = user_info.get("kakao_account", {}).get("email")
-    user = User.query.filter_by(username=email).first()
+    kakao_account = user_info.get("kakao_account", {})
+    email = kakao_account.get("email")
+    if not email:
+        return "카카오에서 이메일 정보를 가져올 수 없습니다. 이메일 동의를 확인하세요."
+    user = User.query.filter_by(email=email).first()
 
     if user:
         if user.provider == "local":
@@ -146,7 +158,16 @@ def kakao_login_process():
             session['user_id'] = user.id
             return redirect("/")
     else:
-        user = User(username=email, password=None, provider="kakao")
+        username = email.split("@")[0]
+
+        user = User(
+            username=username,
+            email=email,
+            password=None,
+            provider="kakao",
+            is_verified=True
+        )
+
         db.session.add(user)
         db.session.commit()
         session['user_id'] = user.id
@@ -163,7 +184,7 @@ def social_link_confirm():
 
     if request.method == "POST":
         provider = request.form.get("provider")
-        user = User.query.filter_by(username=email).first()
+        user = User.query.filter_by(email=email).first()
         providers = set(user.provider.split(","))
         providers.add(provider)
         user.provider = ",".join(providers)

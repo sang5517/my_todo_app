@@ -17,10 +17,16 @@ def register():
     if request.method == 'GET':
         return render_template('register.html')  # ✅ 이게 맞음
     
-    username = request.form.get('email')
+    username = request.form.get('username')
+    email = request.form.get('email')
     password = request.form.get('password')
+    password_confirm = request.form.get('password_confirm')
 
-    if not session.get('verified') or session.get('email_for_verify') != username:
+    if password != password_confirm:
+        return jsonify({"message": "비밀번호 불일치", "success": False})
+    
+
+    if not session.get('verified') or session.get('email_for_verify') != email:
         return jsonify({"message": "이메일 인증 먼저 해주세요", "success": False})
 
     existing_user = User.query.filter_by(username=username).first()
@@ -31,20 +37,43 @@ def register():
         else:
             return jsonify({"message": "이미 가입된 아이디", "success": False})
 
+    # 🔥 이메일 중복 체크 추가
+    existing_email = User.query.filter_by(email=email).first()
+    if existing_email:
+        return jsonify({"message": "이미 가입된 이메일입니다", "success": False})
+    
     hashed_pw = generate_password_hash(password)
-    user = User(username=username, password=hashed_pw, provider="local", is_verified=True)
+    user = User(
+        username=username,
+        email=email,  # 🔥 여기 추가
+        password=hashed_pw,
+        provider="local",
+        is_verified=True
+    )
 
     db.session.add(user)
     db.session.commit()
 
     return jsonify({"message": "회원가입 성공", "success": True})
 
+@auth_bp.route('/check-username',methods=['POST'])
+def check_username():
+    username = request.form.get('username')
+
+    user = User.query.filter_by(username=username).first()
+
+    if user:
+        return jsonify({"message": "이미 사용중인 아이디", "available" : False})
+    else:
+        return jsonify({"message": "사용 가능한 아이디", "available": True})
+    
+
 @auth_bp.route('/login', methods=['GET','POST'])
 def login():
     if request.method == 'GET':
         return render_template('login.html')  # ✅ 이게 맞음
     
-    username = request.form.get('email')
+    username = request.form.get('username')
     password = request.form.get('password')
 
     user = User.query.filter_by(username=username).first()
@@ -84,7 +113,7 @@ def send_code():
 def reset_send_code():
     email = request.form.get('email')
 
-    user = User.query.filter_by(username=email).first()
+    user = User.query.filter_by(email=email).first()
     if not user:
         return jsonify({"message": "가입된 이메일 없음", "success": False})
 
@@ -110,7 +139,7 @@ def verify_code():
 @auth_bp.route('/find-id', methods=['POST'])
 def find_id():
     email = request.form.get('email')
-    user = User.query.filter_by(username=email).first()
+    user = User.query.filter_by(email=email).first()
 
     if not user:
         return jsonify({"message": "가입된 이메일 없음", "success": False})
@@ -136,7 +165,7 @@ def reset_password():
     new_password = request.form.get('password')
     email = session.get('reset_email')
 
-    user = User.query.filter_by(username=email).first()
+    user = User.query.filter_by(email=email).first()
 
     user.password = generate_password_hash(new_password)
     db.session.commit()

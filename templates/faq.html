@@ -3,7 +3,7 @@
 
 <h2>FAQ</h2>
 
-<a href="{{ url_for('post.write', category='faq') }}">글 작성</a>
+<a href="{{ url_for('post.write', category='faq') }}" id="write-btn">글 작성</a>
 
 <ul>
 {% for post in posts %}
@@ -22,4 +22,19 @@
     </li>
 {% endfor %}
 </ul>
+<script>
+const isLoggedIn = {{ 'true' if logged_in else 'false' }};
+
+const writeBtn = document.getElementById('write-btn');
+
+if (writeBtn) {
+    writeBtn.addEventListener('click', function(e) {
+        if (!isLoggedIn) {
+            e.preventDefault();
+            alert("로그인 하시면 서비스 이용이 가능합니다.");
+            window.location.href = "/login";
+        }
+    });
+}
+</script>
 {% endblock %}

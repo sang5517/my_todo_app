@@ -4,9 +4,7 @@
 
 {% block content %}
 <h2>최근 글</h2>
-{% if logged_in %}
-    <a href="{{ url_for('post.write', category='general') }}">글 작성</a>
-{% endif %}
+<a href="{{ url_for('post.write', category='general') }}" id="write-btn">글 작성</a>
 <div class="posts">
     {% for post in posts %}
     <div class="post-card">
@@ -26,4 +24,19 @@
     </div>
 {% endfor %}
 </div>
+<script>
+const isLoggedIn = {{ 'true' if logged_in else 'false' }};
+
+const writeBtn = document.getElementById('write-btn');
+
+if (writeBtn) {
+    writeBtn.addEventListener('click', function(e) {
+        if (!isLoggedIn) {
+            e.preventDefault();
+            alert("로그인 하시면 서비스 이용이 가능합니다.");
+            window.location.href = "/login";
+        }
+    });
+}
+</script>
 {% endblock %}

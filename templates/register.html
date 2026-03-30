@@ -5,7 +5,7 @@
 {% block content %}
 <h1>회원가입</h1>
 
-<form method="POST">
+<form method="POST"  id="register-form">
     <!-- 이메일 -->
     <label>이메일:</label>
     <input type="email" name="email" id="email" required>
@@ -64,6 +64,25 @@ function verifyCode() {
     .then(res => res.text())
     .then(data => alert(data));
 }
+// 🔥 여기 추가
+document.getElementById('register-form').addEventListener('submit', function(e) {
+    e.preventDefault();  // 🔥 이게 핵심
+
+    const formData = new FormData(this);
+
+    fetch('/register', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+
+        if (data.success) {
+            window.location.href = '/login';
+        }
+    });
+});
 </script>
 
 {% endblock %}

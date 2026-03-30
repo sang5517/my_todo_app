@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>아이디 찾기</h2>
+
+<input type="email" id="email" placeholder="이메일 입력">
+<button onclick="findId()">아이디 찾기</button>
+
+<script>
+function findId() {
+    const email = document.getElementById('email').value;
+
+    if (!email) {
+        alert("이메일 입력하세요");
+        return;
+    }
+
+    fetch('/find-id', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'email=' + email
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+    });
+}
+</script>
+{% endblock %}

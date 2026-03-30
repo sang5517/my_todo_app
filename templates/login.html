@@ -24,7 +24,7 @@
 
 <h1>로그인</h1>
 
-<form method="post">
+<form method="post" id="login-form">
     <label>아이디:</label>
     <input type="email" name="email" required><br>
 
@@ -33,6 +33,11 @@
 
     <button type="submit">로그인</button>
 
+    <p>
+    <a href="/find-id">아이디 찾기</a> |
+    <a href="/reset-password">비밀번호 찾기</a>
+    </p>
+    
     <p>또는 외부계정으로 로그인:</p>
     <a href="{{ url_for('google.login') }}">
         <button type="button">Google 로그인</button>
@@ -71,6 +76,27 @@
         emailText.innerText = "{{ pending_link }}";
         modal.style.display = 'flex';
     {% endif %}
+</script>
+
+<script>
+document.getElementById('login-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+
+    fetch("{{ url_for('auth.login') }}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/';
+        } else {
+            alert(data.message);
+        }
+    });
+});
 </script>
 
 {% endblock %}

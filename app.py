@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from datetime import timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_dance.contrib.google import make_google_blueprint, google
 import requests
@@ -28,6 +29,8 @@ app.register_blueprint(post_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(comment_bp)
 app.register_blueprint(like_bp)
+
+app.jinja_env.globals['timedelta'] = timedelta
 db.init_app(app)
 
 

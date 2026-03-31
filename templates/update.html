@@ -10,7 +10,8 @@
     내용: <textarea name="content">{{ post.content }}</textarea><br><br>
     
     
-
+    <a href="{{ url_for('post.detail', post_id=post.id) }}" 
+    class="btn btn-secondary">취소</a>
     <button type="submit">수정 완료</button>
 </form>
 {% endblock %}

@@ -16,7 +16,6 @@
     <table class="table table-hover align-middle">
         <thead class="table-light">
             <tr>
-                <th style="width: 10%">번호</th>
                 <th>제목</th>
                 <th style="width: 15%">작성자</th>
                 <th style="width: 20%">날짜</th>
@@ -25,23 +24,29 @@
         </thead>
 
         <tbody>
-            {% for post in posts %}
+            {% for post in posts.items %}
             <tr>
-                <td>{{ post.id }}</td>
-
-                <td>
-                    <a href="{{ url_for('post.detail', post_id=post.id) }}" 
-                       class="text-decoration-none text-dark">
-                        {{ post.title }}
-                    </a>
-                </td>
-
+                <td>{{ post.title }}</td>
                 <td>{{ post.author.username }}</td>
-                <td>{{ (post.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ post.created_at + timedelta(hours=9) }}</td>
                 <td>{{ post.views }}</td>
             </tr>
             {% endfor %}
         </tbody>
+        </table>
+
+        <!-- 페이징 버튼 -->
+        <div class="d-flex justify-content-center mt-3">
+            {% if posts.has_prev %}
+                <a href="{{ url_for('post.index', page=posts.prev_num) }}" class="btn btn-outline-secondary me-2">이전</a>
+            {% endif %}
+
+            <span class="mx-2">페이지 {{ posts.page }} / {{ posts.pages }}</span>
+
+            {% if posts.has_next %}
+                <a href="{{ url_for('post.index', page=posts.next_num) }}" class="btn btn-outline-secondary ms-2">다음</a>
+            {% endif %}
+        </div>
     </table>
 
 </div>

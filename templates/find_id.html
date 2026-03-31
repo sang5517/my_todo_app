@@ -1,20 +1,82 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>아이디 찾기</h2>
+<div class="container mt-5" style="max-width: 500px;">
 
-<input type="email" id="email" placeholder="이메일 입력">
-<button onclick="findId()">아이디 찾기</button>
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <h4 class="mb-4 text-center">아이디 찾기</h4>
+
+            <!-- 이메일 입력 -->
+            <div class="mb-3">
+                <input type="email" id="email" class="form-control" placeholder="이메일 입력">
+            </div>
+
+            <button class="btn btn-dark w-100 mb-3" onclick="sendCode()">
+                인증코드 보내기
+            </button>
+
+            <!-- 인증코드 입력 -->
+            <div id="code-area" style="display:none;">
+                <input type="text" id="code" class="form-control mb-2" placeholder="인증코드 입력">
+
+                <button class="btn btn-primary w-100" onclick="verifyCode()">
+                    인증 확인
+                </button>
+            </div>
+            <!-- 결과 출력 -->
+            <div id="result-area" class="mt-3 text-center" style="display:none;">
+                <h5>아이디 찾기 결과</h5>
+                <p id="found-id" class="fw-bold text-primary"></p>
+            </div>
+        </div>
+    </div>
+
+</div>
 
 <script>
-function findId() {
+function sendCode() {
     const email = document.getElementById('email').value;
 
-    if (!email) {
-        alert("이메일 입력하세요");
-        return;
-    }
+    fetch('/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'email=' + email
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
 
+        if (data.success) {
+            document.getElementById('code-area').style.display = 'block';
+        }
+    });
+}
+
+function verifyCode() {
+    const email = document.getElementById('email').value;
+    const code = document.getElementById('code').value;
+
+    fetch('/verify-code', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'code=' + code + '&email=' + email   // 🔥 핵심
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        
+        if (data.success) {
+            // 인증 성공하면 아이디 찾기 호출
+            findId(email);
+        }
+    });
+}
+
+function findId(email) {
     fetch('/find-id', {
         method: 'POST',
         headers: {
@@ -24,8 +86,15 @@ function findId() {
     })
     .then(res => res.json())
     .then(data => {
-        alert(data.message);
+        if (data.success) {
+            // 🔥 화면에 출력
+            document.getElementById('result-area').style.display = 'block';
+            document.getElementById('found-id').textContent = data.username;
+        } else {
+            alert(data.message);
+        }
     });
 }
 </script>
+
 {% endblock %}

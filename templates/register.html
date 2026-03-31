@@ -53,6 +53,7 @@ function sendCode() {
 
 function verifyCode() {
     const code = document.getElementById('code').value;
+    const email = document.getElementById('email').value;  // 🔥 추가
 
     if (!code) {
         alert("코드 입력하세요");
@@ -64,10 +65,10 @@ function verifyCode() {
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
-        body: 'code=' + code
+        body: 'code=' + code + '&email=' + email   // 🔥 핵심
     })
-    .then(res => res.text())
-    .then(data => alert(data));
+    .then(res => res.json())   // 🔥 이것도 수정 추천
+    .then(data => alert(data.message));
 }
 </script>
 <script>

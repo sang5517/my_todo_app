@@ -106,7 +106,10 @@ def send_code():
 
     send_email(email,code,"register")
 
-    return "인증코드 발송됨"
+    return jsonify({
+        "success": True,
+        "message": "인증코드 발송됨"
+    })
 
 
 @auth_bp.route('/reset-password/send-code', methods=['POST'])
@@ -128,23 +131,39 @@ def reset_send_code():
 
 @auth_bp.route('/verify-code', methods=['POST'])
 def verify_code():
-    user_code = request.form['code']
+    user_code = request.form.get('code')
+    email = request.form.get('email')  # 🔥 여기 get 사용
 
-    if user_code == session.get('email_code'):
+    if not email:
+        return jsonify({"success": False, "message": "이메일 누락"})
+
+    if user_code == session.get('email_code') and email == session.get('email_for_verify'):
         session['verified'] = True
-        return "인증 성공"
+        session['verified_email'] = email
+        return jsonify({"success": True, "message": "인증 성공"})
     else:
-        return "인증 실패"
+        return jsonify({"success": False, "message": "인증 실패"})
         
+
 @auth_bp.route('/find-id', methods=['POST'])
 def find_id():
     email = request.form.get('email')
+
+    # 인증 체크 추가
+    if not session.get('verified') or session.get('verified_email') != email:
+        return jsonify({
+            "message": "이메일 인증 먼저 해주세요",
+            "success": False
+        })
     user = User.query.filter_by(email=email).first()
 
     if not user:
         return jsonify({"message": "가입된 이메일 없음", "success": False})
     
-    return jsonify({"message": f"아이디: {user.username}", "success": True})
+    return jsonify({
+    "success": True,
+    "username": user.username
+    })
 
 
 

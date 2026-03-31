@@ -14,10 +14,16 @@ like_bp = Blueprint('like', __name__)
 
 @post_bp.route('/')
 def index():
-    posts = Post.query.filter_by(category='general').order_by(Post.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int) # url에서? page=로 받아옴, 기본값 1
+    per_page = 10 # 한 페이지에 보여줄 글수
+
+    posts = Post.query.filter_by(category='general')\
+                      .order_by(Post.created_at.desc())\
+                      .paginate(page=page, per_page=per_page, error_out=False)
+    
     return render_template(
         'index.html',
-        posts=posts,
+        posts=posts, # paginate 객체 그대로 전달 
         title='최근 글',
         category='general'
     )
@@ -157,17 +163,35 @@ def like_comment(comment_id):
 
 @post_bp.route('/qna')
 def qna():
-    posts = Post.query.filter_by(category='qna').order_by(Post.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    posts = Post.query.filter_by(category='qna')\
+                      .order_by(Post.created_at.desc())\
+                      .paginate(page=page, per_page=per_page, error_out=False)
+    
     return render_template('index.html', posts=posts, title='Q&A', category='qna')
 
 @post_bp.route('/faq')
 def faq():
-    posts = Post.query.filter_by(category='faq').order_by(Post.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    posts = Post.query.filter_by(category='qna')\
+                      .order_by(Post.created_at.desc())\
+                      .paginate(page=page, per_page=per_page, error_out=False)
+    
     return render_template('index.html', posts=posts, title='FAQ', category='faq')
 
 @post_bp.route('/tips')
 def tips():
-    posts = Post.query.filter_by(category='tips').order_by(Post.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 10
+    
+    posts = Post.query.filter_by(category='qna')\
+                      .order_by(Post.created_at.desc())\
+                      .paginate(page=page, per_page=per_page, error_out=False)
+    
     return render_template('index.html', posts=posts, title='꿀팁', category='tips')
 
 @post_bp.route('/post/<int:post_id>')

@@ -1,64 +1,65 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-4">
+<!-- 글 카드 -->
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">{{ post.title }}</h3>
 
-    <!-- 상단 수정/삭제 -->
-    <div class="d-flex justify-content-end mb-2">
-        {% if logged_in and post.author_id == user.id %}
-            <a href="{{ url_for('post.update', post_id=post.id) }}" 
-               class="btn btn-sm btn-outline-primary me-2">수정</a>
+            {% if logged_in and post.author_id == user.id %}
+            <div>
+                <a href="{{ url_for('post.update', post_id=post.id) }}" 
+                class="btn btn-sm btn-outline-primary me-1">수정</a>
 
-            <a href="{{ url_for('post.delete', post_id=post.id) }}" 
-               class="btn btn-sm btn-outline-danger"
-               onclick="return confirm('삭제하시겠습니까?');">삭제</a>
-        {% endif %}
-    </div>
-
-    <!-- 글 카드 -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-
-            <h3 class="mb-3">{{ post.title }}</h3>
-
-            <div class="text-muted small mb-3">
-                {{ post.author.username }} |
-                {{ (post.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }} |
-                조회 {{ post.views }}
+                <a href="{{ url_for('post.delete', post_id=post.id) }}" 
+                class="btn btn-sm btn-outline-danger"
+                onclick="return confirm('삭제하시겠습니까?');">삭제</a>
             </div>
-
-            <hr>
-
-            <div class="mb-4" style="white-space: pre-line;">
-                {{ post.content }}
-            </div>
-
-            <!-- 좋아요 -->
-            <button id="like-btn" 
-                    data-post-id="{{ post.id }}"
-                    class="btn btn-outline-danger btn-sm">
-                ❤️ 좋아요 (<span id="like-count">{{ post.likes|length }}</span>)
-            </button>
-
+            {% endif %}
         </div>
-    </div>
+        <div class="text-muted small mb-3">
+            <strong>{{ post.author.nickname }}</strong>
+            <span style="color: gray;">({{ post.author.username }})</span> |
+            {{ (post.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }} |
+            조회 {{ post.views }}
+        </div>
 
-    <!-- 댓글 -->
-    <div class="card shadow-sm">
-        <div class="card-body">
+        <hr>
 
-            <h5 class="mb-3">댓글</h5>
+        <div class="mb-4" style="white-space: pre-line;">
+            {{ post.content }}
+        </div>
 
-            {% if post.comments %}
-                {% for comment in post.comments %}
-                <div class="border-bottom py-2">
+        <!-- 좋아요 -->
+        <button id="like-btn" 
+                data-post-id="{{ post.id }}"
+                class="btn btn-outline-danger btn-sm mb-3">
+            ❤️ 좋아요 (<span id="like-count">{{ post.likes|length }}</span>)
+        </button>
 
-                    <!-- 작성자 + 버튼 -->
-                    <div class="d-flex justify-content-between">
-                        <strong>{{ comment.user.username }}</strong>
+        <!-- 🔥 댓글 영역 시작 -->
+        <hr>
+
+        <h5 class="mb-3">댓글</h5>
+
+        {% if post.comments %}
+            {% for comment in post.comments %}
+            <div class="border-bottom py-3">
+
+                <!-- 작성자 -->
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>{{ comment.user.nickname }}</strong>
+                        <span style="color: gray;">({{ comment.user.username }})</span>
+                    </div>
+
+                    <div class="d-flex align-items-center gap-2">
                         <small class="text-muted">
                             {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
                         </small>
+
                         {% if user and comment.user_id == user.id %}
                         <div>
                             <a href="#" class="text-primary small edit-btn">수정</a>
@@ -70,58 +71,59 @@
                         </div>
                         {% endif %}
                     </div>
+                </div>
 
-                    <!-- 기존 댓글 -->
-                    <div class="comment-content mt-1">
-                        {{ comment.content }}
-                    </div>
+                <!-- 내용 -->
+                <div class="comment-content mt-2">
+                    {{ comment.content }}
+                </div>
 
-                    <!-- 수정 input -->
-                    <input type="text"
-                           class="form-control edit-input mt-1"
-                           value="{{ comment.content }}"
-                           style="display:none;">
+                <!-- 수정 input -->
+                <input type="text"
+                       class="form-control edit-input mt-2"
+                       value="{{ comment.content }}"
+                       style="display:none;">
 
-                    <!-- 저장 버튼 -->
-                    <button class="btn btn-sm btn-dark mt-1 save-btn"
+                <!-- 버튼 -->
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-dark save-btn"
                             data-comment-id="{{ comment.id }}"
                             style="display:none;">
                         저장
                     </button>
-                    <!-- 저장 취소 -->
-                     <button class="btn btn-sm btn-secondary mt-1 cancel-btn"
+
+                    <button class="btn btn-sm btn-secondary cancel-btn"
                             style="display:none;">
                         취소
                     </button>
-                    <!-- 댓글 좋아요 -->
-                    <button class="comment-like-btn btn btn-sm btn-outline-secondary mt-1"
+
+                    <button class="comment-like-btn btn btn-sm btn-outline-secondary"
                             data-comment-id="{{ comment.id }}">
                         👍 (<span class="comment-like-count">
                             {{ comment.likes|length }}
                         </span>)
                     </button>
-
                 </div>
-                {% endfor %}
-            {% else %}
-                <p class="text-muted">아직 댓글이 없습니다</p>
-            {% endif %}
 
-            <!-- 댓글 입력 -->
-            {% if logged_in %}
-            <form method="POST" 
-                  action="{{ url_for('comment.write_comment', post_id=post.id) }}" 
-                  class="mt-3">
-                <div class="input-group">
-                    <input type="text" name="content" class="form-control" placeholder="댓글 입력">
-                    <button class="btn btn-dark">작성</button>
-                </div>
-            </form>
-            {% endif %}
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">아직 댓글이 없습니다</p>
+        {% endif %}
 
-        </div>
+        <!-- 댓글 입력 -->
+        {% if logged_in %}
+        <form method="POST" 
+              action="{{ url_for('comment.write_comment', post_id=post.id) }}" 
+              class="mt-3">
+            <div class="input-group">
+                <input type="text" name="content" class="form-control" placeholder="댓글 입력">
+                <button class="btn btn-dark">작성</button>
+            </div>
+        </form>
+        {% endif %}
+
     </div>
-
 </div>
 
 <!-- 좋아요 -->

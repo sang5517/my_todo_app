@@ -211,4 +211,11 @@ def reset_verify():
     return jsonify({"message" : "코드 틀림", "success":False})
 
 
+@auth_bp.route('/mypage')
+def mypage():
+    if 'user_id' not in session:
+        return redirect('/login')
     
+    user = User.query.get(session['user_id'])
+
+    return render_template('mypage.html', user=user)

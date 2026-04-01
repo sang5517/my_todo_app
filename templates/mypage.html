@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5" style="max-width: 700px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4 text-center">마이페이지</h4>
+
+            <!--  기본 정보   -->
+            <div class="mb-4">
+                <h6 class="text-muted">기본정보</h6>
+                <hr>
+
+                <p><strong>아이디</strong> : {{ user.username }}</p>
+                <p><strong>아이디</strong> : {{ user.nickname }}</p>
+                <p><strong>아이디</strong> : {{ user.email }}</p>
+            </div>
+
+            <!-- 기능 버튼 -->
+            <div class="d-grid gap-2">
+                <a href="#" class="btn-outline-primary">
+                    닉네임 변경
+                </a>
+
+                <a href="/reset-password" class="btn-outline-dark">
+                    비밀번호 변경
+                </a>
+
+                <a href="#" class="btn-outline-secondary">
+                    내가 쓴 글
+                </a>
+
+                <a href="#" class="btn-outline-secondary">
+                    내가 쓴 댓글 
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

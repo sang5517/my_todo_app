@@ -4,7 +4,7 @@ from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.email import send_email,generate_code
 from flask import jsonify
-
+import re
 auth_bp = Blueprint('auth', __name__)
 
 
@@ -18,6 +18,7 @@ def register():
         return render_template('register.html')  # ✅ 이게 맞음
     
     username = request.form.get('username')
+    nickname = request.form.get('nickname')
     email = request.form.get('email')
     password = request.form.get('password')
     password_confirm = request.form.get('password_confirm')
@@ -43,10 +44,18 @@ def register():
         return jsonify({"message": "이미 가입된 이메일입니다", "success": False})
     
     hashed_pw = generate_password_hash(password)
+
+    if not re.match("^[a-zA-Z0-9가-힣]{2,10}$", nickname):
+        return jsonify({"message": "닉네임 형식 오류", "success": False})
+    
+    existing_nickname = User.query.filter_by(nickname=nickname).first()
+    if existing_nickname:
+        return jsonify({"message": "이미 사용중인 닉네임", "success": False})
     user = User(
         username=username,
-        email=email,  # 🔥 여기 추가
+        email=email, # 🔥 여기 추가
         password=hashed_pw,
+        nickname=nickname,
         provider="local",
         is_verified=True
     )

@@ -60,6 +60,27 @@ def inject_user():
 # =====================
 # Google OAuth 설정
 # =====================
+
+def generate_unique_nickname(base):
+    nickname = base
+    count = 1
+
+    while User.query.filter_by(nickname=nickname).first():
+        nickname = f"{base}{count}"
+        count += 1
+
+    return nickname
+
+def generate_unique_username(base):
+    username = base
+    count = 1
+
+    while User.query.filter_by(username=username).first():
+        username = f"{base}{count}"
+        count += 1
+
+    return username
+
 google_bp = make_google_blueprint(
     client_id=os.getenv("GOOGLE_CLIENT_ID"),
     client_secret=os.getenv("GOOGLE_CLIENT_SECRET"),
@@ -82,7 +103,10 @@ def google_login_process():
         return redirect(url_for("login"))
 
     user_info = resp.json()
-    email = user_info['email']
+
+    email = user_info.get("email")
+    name = user_info.get("name") or "user"
+
     user = User.query.filter_by(email=email).first()
 
     if user:
@@ -93,18 +117,21 @@ def google_login_process():
             session['user_id'] = user.id
             return redirect("/")
     else:
-        username = email.split("@")[0]
+        username = generate_unique_username(email.split("@")[0])
+        nickname = generate_unique_nickname(name)
 
         user = User(
             username=username,
             email=email,
+            nickname=nickname,   # 🔥 추가
             password=None,
-            provider="kakao",
+            provider="google",   # 🔥 수정
             is_verified=True
         )
 
         db.session.add(user)
         db.session.commit()
+
         session['user_id'] = user.id
         return redirect("/")
 
@@ -148,7 +175,10 @@ def kakao_login_process():
 
     user_info = user_response.json()
     kakao_account = user_info.get("kakao_account", {})
+    properties = user_info.get("properties", {})
     email = kakao_account.get("email")
+    nickname = properties.get("nickname")
+
     if not email:
         return "카카오에서 이메일 정보를 가져올 수 없습니다. 이메일 동의를 확인하세요."
     user = User.query.filter_by(email=email).first()
@@ -161,11 +191,16 @@ def kakao_login_process():
             session['user_id'] = user.id
             return redirect("/")
     else:
-        username = email.split("@")[0]
+        username_base = email.split("@")[0]
+        username = generate_unique_username(username_base)
+
+        nickname = properties.get("nickname") or "user"
+        nickname = generate_unique_nickname(nickname)
 
         user = User(
             username=username,
             email=email,
+            nickname=nickname,
             password=None,
             provider="kakao",
             is_verified=True

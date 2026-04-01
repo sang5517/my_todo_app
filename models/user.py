@@ -8,7 +8,7 @@ class User(db.Model):
     
     password = db.Column(db.String(200), nullable=True)
     provider = db.Column(db.String(20), default="local")
+    nickname = db.Column(db.String(50), unique=True ,nullable=False)
     posts = db.relationship('Post', backref='author', lazy=True)
     comments = db.relationship('Comment', backref='user', lazy=True)  # backref 여기만
-
     is_verified = db.Column(db.Boolean, default=False)

@@ -5,30 +5,42 @@
 {% block content %}
 <h1>회원가입</h1>
 
-<form method="POST"  id="register-form">
-    <!-- 아이디  -->
-    <label>아이디:</label>
-    <input type="text" name="username" id="username" placeholder="아이디" required>
-    <button type="button" onclick="checkUsername()">중복확인</button>
-    <!-- 이메일 -->
-    <label>이메일:</label>
-    <input type="email" name="email" id="email" required>
-    
-    <!-- 인증코드 버튼 -->
-    <button type="button" onclick="sendCode()">인증코드 받기</button><br><br>
+<form method="POST" id="register-form">
 
-    <!-- 인증코드 입력 -->
-    <input type="text" id="code" placeholder="인증코드 입력">
+    <div class="mb-3">
+        <input type="text" name="username" id="username" class="form-control" placeholder="아이디" required>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="checkUsername()">중복확인</button>
+    </div>
 
-    <!-- 인증 확인 -->
-    <button type="button" onclick="verifyCode()">인증 확인</button><br><br>
+    <div class="mb-3">
+        <input type="email" name="email" id="email" class="form-control" placeholder="이메일" required>
+    </div>
 
-    <!-- 비밀번호 -->
-    <label>비밀번호:</label>
-    <input type="password" name="password" id="password" placeholder="비밀번호" required>
-    <input type="password" name="password_confirm" id="password_confirm" placeholder="비밀번호 확인" required>
+    <button type="button" class="btn btn-outline-dark w-100 mb-2" onclick="sendCode()">
+        인증코드 받기
+    </button>
 
-    <button type="submit">회원가입</button>
+    <div class="mb-3">
+        <input type="text" id="code" class="form-control" placeholder="인증코드 입력">
+        <button type="button" class="btn btn-primary w-100 mt-2" onclick="verifyCode()">
+            인증 확인
+        </button>
+    </div>
+
+    <div class="mb-3">
+        <input type="text" name="nickname" class="form-control" placeholder="닉네임" required>
+    </div>
+
+    <div class="mb-3">
+        <input type="password" name="password" class="form-control" placeholder="비밀번호" required>
+    </div>
+
+    <div class="mb-3">
+        <input type="password" name="password_confirm" class="form-control" placeholder="비밀번호 확인" required>
+    </div>
+
+    <button class="btn btn-dark w-100">회원가입</button>
+
 </form>
 
 <script>
@@ -47,8 +59,8 @@ function sendCode() {
         },
         body: 'email=' + email
     })
-    .then(res => res.text())
-    .then(data => alert(data));
+    .then(res => res.json())
+    .then(data => alert(data.message));
 }
 
 function verifyCode() {
@@ -96,8 +108,8 @@ function checkUsername() {
 document.getElementById('register-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const pw = document.getElementById("password").value;
-    const pw2 = document.getElementById("password_confirm").value;
+    const pw = document.querySelector("input[name='password']").value;
+    const pw2 = document.querySelector("input[name='password_confirm']").value;
 
     // 🔥 프론트 1차 검증
     if (pw !== pw2) {

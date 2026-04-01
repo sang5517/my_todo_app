@@ -26,8 +26,13 @@
         <tbody>
             {% for post in posts.items %}
             <tr>
-                <td>{{ post.title }}</td>
-                <td>{{ post.author.username }}</td>
+                <td><a href="{{ url_for('post.detail', post_id=post.id) }}">
+                    {{ post.title }}
+                    </a></td>
+                <td>
+                    <strong>{{ post.author.nickname }}</strong>
+                    <span style="color: gray;">({{ post.author.username }})</span>
+                </td>
                 <td>{{ post.created_at + timedelta(hours=9) }}</td>
                 <td>{{ post.views }}</td>
             </tr>

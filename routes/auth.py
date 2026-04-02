@@ -11,6 +11,16 @@ auth_bp = Blueprint('auth', __name__)
 
 from flask import jsonify
 
+def clean_nickname(nickname):
+    if not nickname:
+        return None
+    
+    nickname = nickname.strip()              # 앞뒤 공백 제거
+    nickname = " ".join(nickname.split())    # 공백 여러개 → 1개
+    
+    return nickname
+
+
 @auth_bp.route('/register', methods=['GET','POST'])
 def register():
 
@@ -18,7 +28,7 @@ def register():
         return render_template('register.html')  # ✅ 이게 맞음
     
     username = request.form.get('username')
-    nickname = request.form.get('nickname')
+    nickname = clean_nickname(request.form.get('nickname')) 
     email = request.form.get('email')
     password = request.form.get('password')
     password_confirm = request.form.get('password_confirm')
@@ -45,12 +55,13 @@ def register():
     
     hashed_pw = generate_password_hash(password)
 
-    if not re.match("^[a-zA-Z0-9가-힣]{2,10}$", nickname):
-        return jsonify({"message": "닉네임 형식 오류", "success": False})
+    if not nickname or not re.match("^[a-zA-Z0-9가-힣 ]{2,15}$", nickname):
+        return jsonify({"message": "닉네임은 2~15자, 한글/영문/숫자만 가능", "success": False})
     
     existing_nickname = User.query.filter_by(nickname=nickname).first()
     if existing_nickname:
         return jsonify({"message": "이미 사용중인 닉네임", "success": False})
+    
     user = User(
         username=username,
         email=email, # 🔥 여기 추가
@@ -219,3 +230,91 @@ def mypage():
     user = User.query.get(session['user_id'])
 
     return render_template('mypage.html', user=user)
+
+import re
+from flask import jsonify, request, session
+from models.user import User
+from extensions import db
+
+@auth_bp.route('/mypage/send-code', methods = ['POST'])
+def mypage_send_code():
+    if 'user_id' not in session:
+        return jsonify({"success":False, "message":"로그인 필요"})
+    
+    user = User.query.get(session['user_id'])
+
+    code = generate_code()
+
+    session['mypage_code'] = code
+    session['mypage_verified'] = False
+
+    send_email(user.email, code, "reset")
+
+    return jsonify({"success": True, "message":"인증코드 발송됨"})
+
+@auth_bp.route("/mypage/verify", methods=['POST'])
+def mypage_verify():
+    code = request.form.get('code')
+
+    if code == session.get('mypage_code'):
+        session['mypage_verified'] = True
+        return jsonify({"success": True, "message": "인증 성공"})
+    
+    return jsonify({"success": False, "message": "코드 틀림"})
+
+
+@auth_bp.route("/mypage/change-password", methods=['POST'])
+def change_password():
+    if 'user_id' not in session:
+        return jsonify({"success" : False, "message": "로그인 필요"})
+    
+    if not session.get("mypage_verified"):
+        return jsonify({"success": False, "message": "이메일 인증 필요"})
+    
+    user = User.query.get(session['user_id'])
+
+    new_password = request.form.get('password')
+
+    if not new_password:
+        return jsonify({"success" : False, "message": "비밀번호 입력하세요"})
+    
+    user.password = generate_password_hash(new_password)
+
+    db.session.commit()
+
+    # 인증 초기화(중요)
+    session.pop('mypage_verified', None)
+    session.pop('mypage_code',None)
+
+    return jsonify({"success": True, "message": "비밀번호 변경 완료"})
+
+
+
+
+@auth_bp.route('/update-nickname', methods=['POST'])
+def update_nickname():
+    
+    if 'user_id' not in session:
+        return jsonify({"message": "로그인 필요", "success": False})
+
+    user = User.query.get(session['user_id'])
+    new_nickname = clean_nickname(request.form.get('nickname'))
+
+    # 1. 형식 검사
+    if not new_nickname or not re.match("^[a-zA-Z0-9가-힣 ]{2,15}$", new_nickname):
+        return jsonify({"message": "닉네임은 2~15자, 한글/영문/숫자만 가능", "success": False})
+
+    
+    # 2. 중복 체크
+    existing = User.query.filter_by(nickname=new_nickname).first()
+    if existing and existing.id != user.id:
+        return jsonify({"message": "이미 사용중인 닉네임", "success": False})
+
+    if user.nickname == new_nickname:
+        return jsonify({"message": "현재 닉네임과 같습니다", "success": False})
+    
+    # 3. 업데이트
+    user.nickname = new_nickname
+    db.session.commit()
+
+    return jsonify({"message": "닉네임 변경 완료", "success": True})

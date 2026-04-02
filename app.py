@@ -7,6 +7,7 @@ from flask_dance.contrib.google import make_google_blueprint, google
 import requests
 from dotenv import load_dotenv
 import os
+import re
 from functools import wraps
 from extensions import db
 from config import Config
@@ -16,7 +17,8 @@ from routes.post import post_bp,like_bp
 from utils.auth import is_logged_in
 from routes.auth import auth_bp
 from routes.comment import comment_bp
-
+from utils.format import mask_email, mask_username
+from routes.auth import clean_nickname
 # =====================
 # 환경 변수 & 앱 초기화
 # =====================
@@ -31,6 +33,8 @@ app.register_blueprint(comment_bp)
 app.register_blueprint(like_bp)
 
 app.jinja_env.globals['timedelta'] = timedelta
+app.jinja_env.globals['mask_email'] = mask_email
+app.jinja_env.globals['mask_username'] = mask_username
 db.init_app(app)
 
 
@@ -107,6 +111,13 @@ def google_login_process():
     email = user_info.get("email")
     name = user_info.get("name") or "user"
 
+    # 🔥 clean
+    name = clean_nickname(name)
+
+    # 🔥 검증 + fallback
+    if not name or not re.match("^[a-zA-Z0-9가-힣 ]{2,15}$", name):
+        name = "user"
+
     user = User.query.filter_by(email=email).first()
 
     if user:
@@ -123,9 +134,9 @@ def google_login_process():
         user = User(
             username=username,
             email=email,
-            nickname=nickname,   # 🔥 추가
+            nickname=nickname,
             password=None,
-            provider="google",   # 🔥 수정
+            provider="google",
             is_verified=True
         )
 
@@ -134,7 +145,7 @@ def google_login_process():
 
         session['user_id'] = user.id
         return redirect("/")
-
+    
 # =====================
 # Kakao OAuth 설정
 # =====================
@@ -151,7 +162,7 @@ def kakao_login():
 def kakao_login_process():
     code = request.args.get("code")
     if not code:
-        return "로그인 실패: 코드가 없습니다."
+        return "로그인 실패: 코드 없음"
 
     token_url = "https://kauth.kakao.com/oauth/token"
     data = {
@@ -161,26 +172,38 @@ def kakao_login_process():
         "code": code,
         "client_secret": CLIENT_SECRET
     }
+
     headers = {"Content-Type": "application/x-www-form-urlencoded"}
     token_response = requests.post(token_url, data=data, headers=headers)
+
     if token_response.status_code != 200:
-        return f"토큰 요청 실패: {token_response.text}"
+        return "토큰 요청 실패"
 
     access_token = token_response.json().get("access_token")
+
     user_info_url = "https://kapi.kakao.com/v2/user/me"
     headers = {"Authorization": f"Bearer {access_token}"}
     user_response = requests.get(user_info_url, headers=headers)
+
     if user_response.status_code != 200:
-        return f"사용자 정보 요청 실패: {user_response.text}"
+        return "사용자 정보 요청 실패"
 
     user_info = user_response.json()
     kakao_account = user_info.get("kakao_account", {})
     properties = user_info.get("properties", {})
+
     email = kakao_account.get("email")
-    nickname = properties.get("nickname")
+    nickname = properties.get("nickname") or "user"
+
+    # 🔥 핵심 추가 (이거 안했었음)
+    nickname = clean_nickname(nickname)
+
+    if not nickname or not re.match("^[a-zA-Z0-9가-힣 ]{2,15}$", nickname):
+        nickname = "user"
 
     if not email:
-        return "카카오에서 이메일 정보를 가져올 수 없습니다. 이메일 동의를 확인하세요."
+        return "이메일 없음 (동의 필요)"
+
     user = User.query.filter_by(email=email).first()
 
     if user:
@@ -191,10 +214,7 @@ def kakao_login_process():
             session['user_id'] = user.id
             return redirect("/")
     else:
-        username_base = email.split("@")[0]
-        username = generate_unique_username(username_base)
-
-        nickname = properties.get("nickname") or "user"
+        username = generate_unique_username(email.split("@")[0])
         nickname = generate_unique_nickname(nickname)
 
         user = User(
@@ -208,6 +228,7 @@ def kakao_login_process():
 
         db.session.add(user)
         db.session.commit()
+
         session['user_id'] = user.id
         return redirect("/")
 

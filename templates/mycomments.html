@@ -86,6 +86,29 @@
                         </li>
                     {% endfor %}
                 </ul>
+                {% if comments.pages > 1 %}
+                    <div class="mt-4 text-center">
+
+                        {% if comments.has_prev %}
+                            <a href="?page={{ comments.prev_num }}" 
+                            class="btn btn-sm btn-outline-secondary">
+                                이전
+                            </a>
+                        {% endif %}
+
+                        <span class="mx-2">
+                            {{ comments.page }} / {{ comments.pages }}
+                        </span>
+
+                        {% if comments.has_next %}
+                            <a href="?page={{ comments.next_num }}" 
+                            class="btn btn-sm btn-outline-secondary">
+                                다음
+                            </a>
+                {% endif %}
+
+</div>
+{% endif %}
             {% else %}
                 <p class="text-center text-muted">작성한 댓글이 없습니다</p>
             {% endif %}

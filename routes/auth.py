@@ -268,7 +268,11 @@ def mypage_verify():
 def my_posts():
     if 'user_id' not in session:
         return redirect('/login')
-    posts = Post.query.filter_by(author_id=session['user_id']).all()
+    page = request.args.get('page', 1, type=int)
+
+    posts = Post.query.filter_by(author_id = session['user_id'])\
+                      .order_by(Post.created_at.desc())\
+                      .paginate(page=page, per_page=10, error_out=False)
 
     return render_template('myposts.html',posts=posts)
 
@@ -278,7 +282,13 @@ def my_comments():
     if 'user_id' not in session:
         return redirect('/login')
     
-    comments = Comment.query.filter_by(user_id=session['user_id']).all()
+    page = request.args.get('page',1, type=int)
+
+    comments = Comment.query.filter_by(user_id=session['user_id'])\
+                           .order_by(Comment.created_at.desc())\
+                           .paginate(page=page, per_page=10, error_out=False)
+    
+
     
     return render_template('mycomments.html', comments=comments)
 

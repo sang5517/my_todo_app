@@ -28,46 +28,62 @@
             {% if comments %}
                 <ul class="list-group list-group-flush">
                     {% for comment in comments %}
-                        <li class="list-group-item">
+                        <li class="list-group-item comment-item">
 
-                        <!-- 보기 모드 -->
-                        <div id="comment-view-{{ comment.id }}">
-                            <div class="text-muted small">
-                                {{ comment.post.title }}
+                            <!-- 보기 모드 -->
+                            <div id="comment-view-{{ comment.id }}">
+
+                                <a href="/post/{{ comment.post.id }}" class="post-link d-block">
+
+                                    <div class="fw-bold small text-muted mb-1">
+                                        [{{ comment.post.category }}] {{ comment.post.title }}
+                                    </div>
+
+                                    <div>
+                                        댓글: {{ comment.content[:30] }}{% if comment.content|length > 30 %}...{% endif %}
+                                    </div>
+
+                                    <div class="text-muted small mt-1">
+                                        {{ comment.created_at.strftime('%Y-%m-%d') }}
+                                    </div>
+                                </a>
+
+                                <!-- 버튼 -->
+                                <div class="text-end mt-2">
+                                    <button onclick="showCommentEdit({{ comment.id }})"
+                                            class="btn btn-sm btn-outline-primary">
+                                        수정
+                                    </button>
+
+                                    <button onclick="deleteComment({{ comment.id }})"
+                                            class="btn btn-sm btn-outline-danger">
+                                        삭제
+                                    </button>
+                                </div>
+
                             </div>
-                            <div>{{ comment.content }}</div>
-                            <div class="text-end mt-1">
-                                <button onclick="showCommentEdit({{ comment.id }})"
-                                        class="btn btn-sm btn-outline-primary">
-                                    수정
-                                </button>
 
-                                <button onclick="deleteComment({{ comment.id }})"
-                                        class="btn btn-sm btn-outline-danger">
-                                    삭제
-                                </button>
+                            <!-- 🔥 수정 모드 -->
+                            <div id="comment-edit-{{ comment.id }}" style="display:none;">
+
+                                <textarea id="edit-comment-{{ comment.id }}"
+                                        class="form-control mb-2">{{ comment.content }}</textarea>
+
+                                <div class="text-end">
+                                    <button onclick="updateComment({{ comment.id }})"
+                                            class="btn btn-sm btn-success">
+                                        저장
+                                    </button>
+
+                                    <button onclick="cancelCommentEdit({{ comment.id }})"
+                                            class="btn btn-sm btn-secondary">
+                                        취소
+                                    </button>
+                                </div>
+
                             </div>
-                        </div>
 
-                        <!-- 수정 모드 -->
-                        <div id="comment-edit-{{ comment.id }}" style="display:none;">
-                            <textarea id="edit-comment-{{ comment.id }}"
-                                    class="form-control mb-2">{{ comment.content }}</textarea>
-
-                            <div class="text-end">
-                                <button onclick="updateComment({{ comment.id }})"
-                                        class="btn btn-sm btn-success">
-                                    저장
-                                </button>
-
-                                <button onclick="cancelCommentEdit({{ comment.id }})"
-                                        class="btn btn-sm btn-secondary">
-                                    취소
-                                </button>
-                            </div>
-                        </div>
-
-                    </li>
+                        </li>
                     {% endfor %}
                 </ul>
             {% else %}

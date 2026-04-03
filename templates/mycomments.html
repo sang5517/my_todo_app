@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.post-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.post-link:hover {
+    text-decoration: underline;
+}
+
+.comment-item {
+    transition: background-color 0.15s ease;
+}
+
+.comment-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<div class="container mt-5" style="max-width: 800px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4 text-center">내가 쓴 댓글</h4>
+
+            {% if comments %}
+                <ul class="list-group list-group-flush">
+                    {% for comment in comments %}
+                        <li class="list-group-item">
+
+                        <!-- 보기 모드 -->
+                        <div id="comment-view-{{ comment.id }}">
+                            <div class="text-muted small">
+                                {{ comment.post.title }}
+                            </div>
+                            <div>{{ comment.content }}</div>
+                            <div class="text-end mt-1">
+                                <button onclick="showCommentEdit({{ comment.id }})"
+                                        class="btn btn-sm btn-outline-primary">
+                                    수정
+                                </button>
+
+                                <button onclick="deleteComment({{ comment.id }})"
+                                        class="btn btn-sm btn-outline-danger">
+                                    삭제
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 수정 모드 -->
+                        <div id="comment-edit-{{ comment.id }}" style="display:none;">
+                            <textarea id="edit-comment-{{ comment.id }}"
+                                    class="form-control mb-2">{{ comment.content }}</textarea>
+
+                            <div class="text-end">
+                                <button onclick="updateComment({{ comment.id }})"
+                                        class="btn btn-sm btn-success">
+                                    저장
+                                </button>
+
+                                <button onclick="cancelCommentEdit({{ comment.id }})"
+                                        class="btn btn-sm btn-secondary">
+                                    취소
+                                </button>
+                            </div>
+                        </div>
+
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-center text-muted">작성한 댓글이 없습니다</p>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+<script>
+function showCommentEdit(commentId) {
+    document.getElementById('comment-view-' + commentId).style.display = 'none';
+    document.getElementById('comment-edit-' + commentId).style.display = 'block';
+}
+
+function cancelCommentEdit(commentId) {
+    document.getElementById('comment-view-' + commentId).style.display = 'block';
+    document.getElementById('comment-edit-' + commentId).style.display = 'none';
+}
+
+function updateComment(commentId) {
+    const content = document.getElementById('edit-comment-' + commentId).value;
+
+    fetch(`/mypage/comment/update/${commentId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'content=' + encodeURIComponent(content)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+
+function deleteComment(commentId) {
+    if (!confirm("댓글 삭제할까요?")) return;
+
+    fetch(`/mypage/comment/delete/${commentId}`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            location.reload();
+        }
+    });
+}    
+</script>
+{% endblock %}

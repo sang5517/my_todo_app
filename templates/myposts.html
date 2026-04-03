@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+.post-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.post-link:hover {
+    text-decoration: underline;
+}
+
+.post-item {
+    transition: background-color 0.15s ease;
+}
+
+.post-item:hover {
+    background-color: #f8f9fa;
+}
+</style>
+
+<div class="container mt-5" style="max-width: 800px;">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4 text-center">내가 쓴 글</h4>
+
+            {% if posts %}
+                <ul class="list-group list-group-flush">
+                    {% for post in posts %}
+                        <li class="list-group-item post-item">
+
+                            <!-- 보기 모드 -->
+                            <div id="view-mode-{{ post.id }}">
+                                <a href="/post/{{ post.id }}" class="post-link d-block">
+                                    <div class="fw-bold mb-1">
+                                        {{ post.title }}
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="text-muted small">
+                                            {{ post.created_at.strftime('%Y-%m-%d') }}
+                                        </div>
+
+                                        <span class="badge bg-secondary">
+                                            {{ post.category }}
+                                        </span>
+                                    </div>
+                                </a>
+
+                                <div class="mt-2 text-end">
+                                    <button onclick="showEdit({{ post.id }})"
+                                            class="btn btn-sm btn-outline-primary">
+                                        수정
+                                    </button>
+
+                                    <button onclick="deletePost({{ post.id }})"
+                                            class="btn btn-sm btn-outline-danger">
+                                        삭제
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 🔥 수정 모드 -->
+                            <div id="edit-mode-{{ post.id }}" style="display:none;">
+                                <input type="text"
+                                    id="edit-title-{{ post.id }}"
+                                    class="form-control mb-2"
+                                    value="{{ post.title }}">
+
+                                <textarea id="edit-content-{{ post.id }}"
+                                        class="form-control mb-2"
+                                        rows="3">{{ post.content }}</textarea>
+
+                                <div class="text-end">
+                                    <button onclick="updatePost({{ post.id }})"
+                                            class="btn btn-sm btn-success">
+                                        저장
+                                    </button>
+
+                                    <button onclick="cancelEdit({{ post.id }})"
+                                            class="btn btn-sm btn-secondary">
+                                        취소
+                                    </button>
+                                </div>
+                            </div>
+
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-center text-muted">작성한 글이 없습니다</p>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+<script>
+function deletePost(postId) {
+    if (!confirm("삭제할까요?")) return;
+
+    fetch(`/mypage/delete/${postId}`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+function updatePost(postId) {
+    const title = document.getElementById('edit-title-' + postId).value;
+    const content = document.getElementById('edit-content-' + postId).value;
+
+    fetch(`/mypage/update/${postId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        if (data.success) {
+            location.reload();
+        }
+    });
+}
+function showEdit(postId) {
+    document.getElementById('view-mode-' + postId).style.display = 'none';
+    document.getElementById('edit-mode-' + postId).style.display = 'block';
+}
+
+function cancelEdit(postId) {
+    document.getElementById('view-mode-' + postId).style.display = 'block';
+    document.getElementById('edit-mode-' + postId).style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -1,9 +1,11 @@
 from flask import Blueprint, render_template, request, redirect, session
 from models.user import User
+from models.comment import Comment
 from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.email import send_email,generate_code
 from flask import jsonify
+from models.post import Post
 import re
 auth_bp = Blueprint('auth', __name__)
 
@@ -262,17 +264,42 @@ def mypage_verify():
     
     return jsonify({"success": False, "message": "코드 틀림"})
 
+@auth_bp.route('/myposts')
+def my_posts():
+    if 'user_id' not in session:
+        return redirect('/login')
+    posts = Post.query.filter_by(author_id=session['user_id']).all()
+
+    return render_template('myposts.html',posts=posts)
+
+
+@auth_bp.route('/mycomments')
+def my_comments():
+    if 'user_id' not in session:
+        return redirect('/login')
+    
+    comments = Comment.query.filter_by(user_id=session['user_id']).all()
+    
+    return render_template('mycomments.html', comments=comments)
 
 @auth_bp.route("/mypage/change-password", methods=['POST'])
 def change_password():
     if 'user_id' not in session:
         return jsonify({"success" : False, "message": "로그인 필요"})
+       
     
+    user = User.query.get(session['user_id'])
+    
+    if user.provider != 'local':
+        return jsonify({
+            "success": False,
+            "message": "소셜 로그인 계정은 비밀번호 변경이 불가능합니다"
+        })
+    
+
     if not session.get("mypage_verified"):
         return jsonify({"success": False, "message": "이메일 인증 필요"})
     
-    user = User.query.get(session['user_id'])
-
     new_password = request.form.get('password')
 
     if not new_password:

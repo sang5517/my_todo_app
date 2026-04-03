@@ -177,7 +177,7 @@ def faq():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
-    posts = Post.query.filter_by(category='qna')\
+    posts = Post.query.filter_by(category='faq')\
                       .order_by(Post.created_at.desc())\
                       .paginate(page=page, per_page=per_page, error_out=False)
     
@@ -188,7 +188,7 @@ def tips():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     
-    posts = Post.query.filter_by(category='qna')\
+    posts = Post.query.filter_by(category='tips')\
                       .order_by(Post.created_at.desc())\
                       .paginate(page=page, per_page=per_page, error_out=False)
     
@@ -202,4 +202,73 @@ def detail(post_id):
         db.session.commit()
         
     return render_template('detail.html' , post=post)
+
+
+@post_bp.route('/mypage/delete/<int:post_id>', methods=['POST'])
+@login_required
+def mypage_delete(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    if post.author_id != session['user_id']:
+        return jsonify({"success": False, "message": "권한 없음"})
+    
+    db.session.delete(post)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "삭제 완료"})
+
+@post_bp.route('/mypage/update/<int:post_id>', methods=['POST'])
+@login_required
+def mypage_update(post_id):
+    post = Post.query.get_or_404(post_id)
+
+    # 작성자 검증
+    if post.author_id != session['user_id']:
+        return jsonify({"success": False, "message": "권한 없음"})
+    
+    title = request.form.get('title')
+    content = request.form.get('content')
+
+    if not title or not content:
+        return jsonify({"success": False, "message": "값 입력 필요"})
+    
+    post.title = title
+    post.content = content
+
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "수정 완료"})
+
+
+@post_bp.route('/mypage/comment/update/<int:comment_id>', methods=['POST'])
+@login_required
+def mypage_update_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+
+    if comment.user_id != session['user_id']:
+        return jsonify({"success": False, "message": "권한 없음"})
+
+    content = request.form.get('content')
+
+    if not content:
+        return jsonify({"success": False, "message": "내용 입력하세요"})
+    
+    comment.content = content
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "댓글 수정 완료"})
+
+
+@post_bp.route('/mypage/comment/delete/<int:comment_id>', methods=['POST'])
+@login_required
+def mypage_delete_comment(comment_id):
+    comment = Comment.query.get_or_404(comment_id)
+
+    if comment.user_id != session['user_id']:
+        return jsonify({"success": False, "message": "권한 없음"})
+    
+    db.session.delete(comment)
+    db.session.commit()
+
+    return jsonify({"success": True, "message": "댓글 삭제 완료"})
 

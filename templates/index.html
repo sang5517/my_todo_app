@@ -3,13 +3,27 @@
 {% block content %}
 <div class="container mt-4">
 
+    <!-- 🔍 검색 -->
+    <form method="GET" action="{{ request.path }}" class="d-flex mb-3">
+        <input type="text" name="q" class="form-control me-2"
+               placeholder="검색어 입력"
+               value="{{ request.args.get('q', '') }}">
+
+        <!-- 카테고리 유지 -->
+        <input type="hidden" name="category" value="{{ category }}">
+
+        <button class="btn btn-outline-dark">검색</button>
+    </form>
+
     <!-- 상단 -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4>최근 글</h4>
+        {% if category != 'notice' or user.is_admin %}
         <a href="{{ url_for('post.write', category=category) }}" 
-           class="btn btn-sm btn-dark" id="write-btn">
+        class="btn btn-sm btn-dark" id="write-btn">
             글쓰기
         </a>
+        {% endif %}
     </div>
 
     <!-- 리스트 -->
@@ -26,9 +40,11 @@
         <tbody>
             {% for post in posts.items %}
             <tr>
-                <td><a href="{{ url_for('post.detail', post_id=post.id) }}">
-                    {{ post.title }}
-                    </a></td>
+                <td>
+                    <a href="{{ url_for('post.detail', post_id=post.id) }}">
+                        {{ post.title }}
+                    </a>
+                </td>
                 <td>
                     <strong>{{ post.author.nickname }}</strong>
                     <span style="color: gray;">({{ post.author.username }})</span>
@@ -38,21 +54,30 @@
             </tr>
             {% endfor %}
         </tbody>
-        </table>
-
-        <!-- 페이징 버튼 -->
-        <div class="d-flex justify-content-center mt-3">
-            {% if posts.has_prev %}
-                <a href="{{ url_for('post.index', page=posts.prev_num) }}" class="btn btn-outline-secondary me-2">이전</a>
-            {% endif %}
-
-            <span class="mx-2">페이지 {{ posts.page }} / {{ posts.pages }}</span>
-
-            {% if posts.has_next %}
-                <a href="{{ url_for('post.index', page=posts.next_num) }}" class="btn btn-outline-secondary ms-2">다음</a>
-            {% endif %}
-        </div>
     </table>
+
+    <!-- 🔥 페이징 (검색 상태 유지 핵심) -->
+    <div class="d-flex justify-content-center mt-3">
+
+        {% if posts.has_prev %}
+            <a href="{{ url_for('post.index',
+                                page=posts.prev_num,
+                                category=category,
+                                q=request.args.get('q')) }}"
+               class="btn btn-outline-secondary me-2">이전</a>
+        {% endif %}
+
+        <span class="mx-2">페이지 {{ posts.page }} / {{ posts.pages }}</span>
+
+        {% if posts.has_next %}
+            <a href="{{ url_for('post.index',
+                                page=posts.next_num,
+                                category=category,
+                                q=request.args.get('q')) }}"
+               class="btn btn-outline-secondary ms-2">다음</a>
+        {% endif %}
+
+    </div>
 
 </div>
 
@@ -70,4 +95,5 @@ if (writeBtn) {
     });
 }
 </script>
+
 {% endblock %}

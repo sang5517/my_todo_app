@@ -8,37 +8,57 @@ from models.comment import Comment
 from flask import jsonify
 from utils.auth import login_required
 from datetime import timedelta
-
+import html
+from utils.filter import contains_bad_word
+from sqlalchemy import or_
 post_bp = Blueprint('post', __name__)
 like_bp = Blueprint('like', __name__)
 
 @post_bp.route('/')
 def index():
-    page = request.args.get('page', 1, type=int) # url에서? page=로 받아옴, 기본값 1
-    per_page = 10 # 한 페이지에 보여줄 글수
+    posts, keyword = list_posts('general')
 
-    posts = Post.query.filter_by(category='general')\
-                      .order_by(Post.created_at.desc())\
-                      .paginate(page=page, per_page=per_page, error_out=False)
-    
     return render_template(
         'index.html',
-        posts=posts, # paginate 객체 그대로 전달 
+        posts=posts,
+        category='general',
         title='최근 글',
-        category='general'
+        keyword=keyword
     )
 
 @post_bp.route('/write', methods=['GET', 'POST'])
 @login_required
 def write():
-    # GET 요청 시 query parameter로 category 받기
     default_category = request.args.get('category', 'general')
+    user = User.query.get(session['user_id'])
 
+    
     if request.method == 'POST':
-        title = request.form['title']
-        content = request.form['content']
-        # POST에서는 숨겨진 input이나 select에서 category 가져오기
+        title = request.form.get('title', '').strip()
+        content = request.form.get('content', '').strip()
         category = request.form.get('category', default_category)
+        
+        # 관리자 제한 (여기위치가 핵심 )
+        if category == 'notice' and not user.is_admin:
+            return jsonify({
+                "success": False,
+                "message": "관리자만 작성 가능"
+            })
+        
+        # 1. 빈값 체크
+        if not title or not content:
+            return jsonify({"success": False, "message": "제목과 내용을 입력해주세요"})
+        
+        # 2. 글자수 제한
+        if len(title) > 100:
+            return jsonify({"success": False, "message": "제목은 100자 이하로 입력해주세요"})
+        
+        if len(content) > 2000:
+            return jsonify({"success": False, "message": "내용은 2000자 이하로 입력해주세요"})
+        
+        # 3. 욕설 필터
+        if contains_bad_word(title) or contains_bad_word(content):
+            return jsonify({"success": False, "message": "부적절한 단어가 포함되어 있습니다"})
         
         new_post = Post(
             title=title,
@@ -49,15 +69,20 @@ def write():
         db.session.add(new_post)
         db.session.commit()
 
-        # 작성 후 카테고리 페이지로 이동
+        # 🔥 redirect 대신 JSON
         if category == 'qna':
-            return redirect('/qna')
-        elif category == 'faq':
-            return redirect('/faq')
-        elif category == 'tips':
-            return redirect('/tips')
+            redirect_url = '/qna'
+        elif category == 'notice':
+            redirect_url = '/notice'
+        elif category == 'info':
+            redirect_url = '/info'
         else:
-            return redirect('/')  # general
+            redirect_url = '/'
+
+        return jsonify({
+            "success": True,
+            "redirect": redirect_url
+        })
 
     return render_template('write.html', default_category=default_category)
 
@@ -75,10 +100,10 @@ def delete(post_id):
     # 삭제 후 카테고리별 페이지로 리다이렉트
     if category == 'qna':
         return redirect('/qna')
-    elif category == 'faq':
-        return redirect('/faq')
-    elif category == 'tips':
-        return redirect('/tips')
+    elif category == 'notice':
+        return redirect('/notice')
+    elif category == 'info':
+        return redirect('/info')
     else:
         return redirect('/')
 
@@ -102,10 +127,10 @@ def update(post_id):
         # 수정 후 카테고리별 페이지로 리다이렉트
         if post.category == 'qna':
             return redirect('/qna')
-        elif post.category == 'faq':
-            return redirect('/faq')
-        elif post.category == 'tips':
-            return redirect('/tips')
+        elif post.category == 'notice':
+            return redirect('/notice')
+        elif post.category == 'info':
+            return redirect('/info')
         else:
             return redirect('/')
 
@@ -163,45 +188,55 @@ def like_comment(comment_id):
 
 @post_bp.route('/qna')
 def qna():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    
-    posts = Post.query.filter_by(category='qna')\
-                      .order_by(Post.created_at.desc())\
-                      .paginate(page=page, per_page=per_page, error_out=False)
-    
-    return render_template('index.html', posts=posts, title='Q&A', category='qna')
+    posts, keyword = list_posts('qna')
 
-@post_bp.route('/faq')
-def faq():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    
-    posts = Post.query.filter_by(category='faq')\
-                      .order_by(Post.created_at.desc())\
-                      .paginate(page=page, per_page=per_page, error_out=False)
-    
-    return render_template('index.html', posts=posts, title='FAQ', category='faq')
+    return render_template(
+        'index.html',
+        posts=posts,
+        category='qna',
+        title='Q&A',
+        keyword=keyword
+    )
 
-@post_bp.route('/tips')
-def tips():
-    page = request.args.get('page', 1, type=int)
-    per_page = 10
-    
-    posts = Post.query.filter_by(category='tips')\
-                      .order_by(Post.created_at.desc())\
-                      .paginate(page=page, per_page=per_page, error_out=False)
-    
-    return render_template('index.html', posts=posts, title='꿀팁', category='tips')
+@post_bp.route('/notice')
+def notice():
+    posts, keyword = list_posts('notice')
+
+    return render_template(
+        'index.html',
+        posts=posts,
+        category='notice',
+        title='Notice',
+        keyword=keyword
+    )
+
+@post_bp.route('/info')
+def info():
+    posts, keyword = list_posts('info')
+
+    return render_template(
+        'index.html',
+        posts=posts,
+        category='info',
+        title='정보공유',
+        keyword=keyword
+    )
 
 @post_bp.route('/post/<int:post_id>')
 def detail(post_id):
     post = Post.query.get_or_404(post_id)
+
+    page = request.args.get('page', 1, type=int)
+    
+    comments = Comment.query.filter_by(post_id=post_id)\
+                            .order_by(Comment.created_at.desc())\
+                            .paginate(page=page, per_page=5, error_out=False)
+    
     if session.get('user_id'):
         post.views += 1 # 조회수 증가
         db.session.commit()
         
-    return render_template('detail.html' , post=post)
+    return render_template('detail.html' , post=post , comments=comments)
 
 
 @post_bp.route('/mypage/delete/<int:post_id>', methods=['POST'])
@@ -272,3 +307,19 @@ def mypage_delete_comment(comment_id):
 
     return jsonify({"success": True, "message": "댓글 삭제 완료"})
 
+
+
+
+def list_posts(category):
+    page = request.args.get('page', 1, type=int)
+    keyword = request.args.get('q', '').strip()
+
+    query = Post.query.filter_by(category=category)
+
+    if keyword:
+        query = query.filter(Post.title.contains(keyword))
+
+    posts = query.order_by(Post.created_at.desc())\
+                 .paginate(page=page, per_page=10, error_out=False)
+
+    return posts, keyword

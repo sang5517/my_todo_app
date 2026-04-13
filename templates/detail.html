@@ -19,6 +19,7 @@
             </div>
             {% endif %}
         </div>
+
         <div class="text-muted small mb-3">
             <strong>{{ post.author.nickname }}</strong>
             <span style="color: gray;">({{ post.author.username }})</span> |
@@ -39,13 +40,13 @@
             ❤️ 좋아요 (<span id="like-count">{{ post.likes|length }}</span>)
         </button>
 
-        <!-- 🔥 댓글 영역 시작 -->
+        <!-- 🔥 댓글 영역 -->
         <hr>
 
-        <h5 class="mb-3">댓글</h5>
+        <h5 id="comments" class="mb-3">댓글</h5>
 
-        {% if post.comments %}
-            {% for comment in post.comments %}
+        {% if comments.items %}
+            {% for comment in comments.items %}
             <div class="border-bottom py-3">
 
                 <!-- 작성자 -->
@@ -60,14 +61,16 @@
                             {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
                         </small>
 
-                        {% if user and comment.user_id == user.id %}
+                        {% if user and (comment.user_id == user.id or user.is_admin) %}
                         <div>
                             <a href="#" class="text-primary small edit-btn">수정</a>
+                            
                             <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}" 
                                class="text-danger small"
                                onclick="return confirm('댓글 삭제하시겠습니까?');">
                                삭제
                             </a>
+                            
                         </div>
                         {% endif %}
                     </div>
@@ -107,18 +110,38 @@
 
             </div>
             {% endfor %}
+
+            <!-- 🔥 페이징 -->
+            {% if comments.pages > 1 %}
+            <div class="mt-4 text-center">
+
+                {% if comments.has_prev %}
+                    <a href="?page={{ comments.prev_num }}#comments"
+                       class="btn btn-sm btn-outline-secondary">이전</a>
+                {% endif %}
+
+                <span class="mx-2 small text-muted">
+                    {{ comments.page }} / {{ comments.pages }}
+                </span>
+
+                {% if comments.has_next %}
+                    <a href="?page={{ comments.next_num }}#comments"
+                       class="btn btn-sm btn-outline-secondary">다음</a>
+                {% endif %}
+
+            </div>
+            {% endif %}
+
         {% else %}
             <p class="text-muted">아직 댓글이 없습니다</p>
         {% endif %}
 
         <!-- 댓글 입력 -->
         {% if logged_in %}
-        <form method="POST" 
-              action="{{ url_for('comment.write_comment', post_id=post.id) }}" 
-              class="mt-3">
+        <form id="comment-form">
             <div class="input-group">
-                <input type="text" name="content" class="form-control" placeholder="댓글 입력">
-                <button class="btn btn-dark">작성</button>
+                <input type="text" id="comment-input" class="form-control">
+                <button type="button" id="comment-submit" class="btn btn-dark">작성</button>
             </div>
         </form>
         {% endif %}
@@ -236,6 +259,35 @@ document.querySelectorAll('.cancel-btn').forEach(btn => {
         parent.querySelector('.save-btn').style.display = 'none';
         this.style.display = 'none';
     });
+});
+</script>
+<script>
+document.getElementById('comment-submit')?.addEventListener('click', function() {
+
+    const content = document.getElementById('comment-input').value;
+    const postId = {{ post.id }};
+
+    fetch(`/comment/write/${postId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: 'content=' + encodeURIComponent(content)
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        // ❌ 실패일 때만 alert
+        if (!data.success) {
+            alert(data.message);
+            return;
+        }
+
+        // ✅ 성공 시 조용히 처리
+        document.getElementById('comment-input').value = ''; // 입력창 초기화
+        location.reload(); // 새로고침 (or 아래 방식으로 더 고급 가능)
+    });
+
 });
 </script>
 {% endblock %}

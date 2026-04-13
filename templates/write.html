@@ -3,17 +3,62 @@
 {% block title %}글 작성{% endblock %}
 
 {% block content %}
-<form method="POST">
+<form method="POST" id="write-form">
 
     <div class="mb-3">
-        <input type="text" name="title" class="form-control" placeholder="제목 입력" required>
+        <input type="text" name="title"
+               id="title"
+               class="form-control"
+               placeholder="제목 입력"
+               maxlength="100">
     </div>
 
     <div class="mb-3">
-        <textarea name="content" class="form-control" rows="6" placeholder="내용 입력" required></textarea>
+        <textarea name="content"
+                  id="content"
+                  class="form-control"
+                  rows="6"
+                  placeholder="내용 입력"
+                  maxlength="2000"></textarea>
     </div>
 
-    <button class="btn btn-dark w-100">작성하기</button>
-    
-</form>>
+    <!-- 카테고리 유지 -->
+    <input type="hidden" name="category" value="{{ default_category }}">
+
+    <button type="submit" class="btn btn-dark w-100">
+        작성하기
+    </button>
+
+</form>
+
+<!-- 🔥 AJAX -->
+<script>
+document.getElementById('write-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const title = document.getElementById('title').value;
+    const content = document.getElementById('content').value;
+    const category = document.querySelector('input[name="category"]').value;
+
+    fetch('/write', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}&category=${encodeURIComponent(category)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        // ❌ 실패만 알림
+        if (!data.success) {
+            alert(data.message);
+            return;
+        }
+
+        // ✅ 성공 시 바로 이동
+        window.location.href = data.redirect;
+    });
+});
+</script>
 {% endblock %}

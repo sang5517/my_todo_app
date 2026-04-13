@@ -26,6 +26,11 @@
 
     <!-- 오른쪽 -->
     <div>
+      {% if logged_in and user and user.is_admin %}
+          <a href="{{ url_for('admin.reports') }}" class="btn btn-warning btn-sm">
+              관리자 페이지
+          </a>
+      {% endif %}
       {% if logged_in %}
         <span>{{ user.username }}님</span>
         <a href="/mypage">마이페이지</a>

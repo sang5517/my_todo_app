@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h3>🚨 신고 관리</h3>
+
+    <table class="table table-bordered mt-3">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>타입</th>
+                <th>대상</th>
+                <th>신고사유</th>
+                <th>상태</th>
+                <th>처리</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for r in reports %}
+            <tr>
+                <td>{{ r.id }}</td>
+
+                <td>
+                    {% if r.post_id %}
+                        글
+                    {% else %}
+                        댓글
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if r.post_id %}
+                        post_id: {{ r.post_id }}
+                    {% else %}
+                        comment_id: {{ r.comment_id }}
+                    {% endif %}
+                </td>
+
+                <td>{{ r.reason }}</td>
+
+                <td>{{ r.status }}</td>
+
+                <td>
+                    {% if r.status == "pending" %}
+                    <button class="btn btn-sm btn-success resolve-btn"
+                            data-id="{{ r.id }}">
+                        처리완료
+                    </button>
+                    {% else %}
+                        완료
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+
+    </table>
+</div>
+<script>
+document.querySelectorAll('.resolve-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+
+        const id = this.dataset.id;
+
+        fetch(`/admin/report/resolve/${id}`, {
+            method: 'POST'
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

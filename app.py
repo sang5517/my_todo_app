@@ -15,6 +15,7 @@ from models.user import User
 from models.post import Post
 from routes.post import post_bp,like_bp
 from routes.report import report_bp
+from routes.admin import admin_bp
 from utils.auth import is_logged_in
 from routes.auth import auth_bp
 from routes.comment import comment_bp
@@ -33,6 +34,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(comment_bp)
 app.register_blueprint(like_bp)
 app.register_blueprint(report_bp)
+app.register_blueprint(admin_bp)
 app.jinja_env.globals['timedelta'] = timedelta
 app.jinja_env.globals['mask_email'] = mask_email
 app.jinja_env.globals['mask_username'] = mask_username
@@ -58,7 +60,8 @@ def current_user():
 def inject_user():
     return dict(
         logged_in=is_logged_in(),
-        user=current_user()
+        user=current_user(),
+        user_id=session.get('user_id')
     )
 
 # ✅ 로그인 필요시 redirect 처리 데코레이터

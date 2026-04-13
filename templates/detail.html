@@ -317,9 +317,15 @@ document.querySelectorAll('.report-post-btn').forEach(btn => {
         .then(res => res.json())
         .then(data => {
             alert(data.message);
+
+            // 🔥 성공이면 버튼 비활성화
+            if (data.success) {
+                this.disabled = true;
+                this.textContent = "신고됨";
+            }
         });
     });
-});   
+});
 document.querySelectorAll('.report-comment-btn').forEach(btn => {
     btn.addEventListener('click', function() {
 
@@ -338,6 +344,11 @@ document.querySelectorAll('.report-comment-btn').forEach(btn => {
         .then(res => res.json())
         .then(data => {
             alert(data.message);
+
+            if (data.success) {
+                this.disabled = true;
+                this.textContent = "신고됨";
+            }
         });
     });
 });

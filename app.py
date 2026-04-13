@@ -14,6 +14,7 @@ from config import Config
 from models.user import User
 from models.post import Post
 from routes.post import post_bp,like_bp
+from routes.report import report_bp
 from utils.auth import is_logged_in
 from routes.auth import auth_bp
 from routes.comment import comment_bp
@@ -31,7 +32,7 @@ app.register_blueprint(post_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(comment_bp)
 app.register_blueprint(like_bp)
-
+app.register_blueprint(report_bp)
 app.jinja_env.globals['timedelta'] = timedelta
 app.jinja_env.globals['mask_email'] = mask_email
 app.jinja_env.globals['mask_username'] = mask_username

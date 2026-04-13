@@ -7,8 +7,13 @@
         
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">{{ post.title }}</h3>
-
-            {% if logged_in and post.author_id == user.id %}
+            {% if logged_in %}
+            <button class="btn btn-sm btn-outline-warning report-post-btn"
+                    data-post-id="{{ post.id }}">
+                🚨 신고
+            </button>
+            {% endif %}
+            {% if logged_in and (post.author_id == user_id or user.is_admin) %}
             <div>
                 <a href="{{ url_for('post.update', post_id=post.id) }}" 
                 class="btn btn-sm btn-outline-primary me-1">수정</a>
@@ -60,7 +65,10 @@
                         <small class="text-muted">
                             {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
                         </small>
-
+                        <button class="btn btn-sm btn-outline-warning report-comment-btn"
+                                data-comment-id="{{ comment.id }}">
+                            🚨
+                        </button>
                         {% if user and (comment.user_id == user.id or user.is_admin) %}
                         <div>
                             <a href="#" class="text-primary small edit-btn">수정</a>
@@ -288,6 +296,50 @@ document.getElementById('comment-submit')?.addEventListener('click', function() 
         location.reload(); // 새로고침 (or 아래 방식으로 더 고급 가능)
     });
 
+});
+</script>
+<script>
+document.querySelectorAll('.report-post-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+
+        const postId = this.dataset.postId;
+        const reason = prompt("신고 사유를 입력하세요");
+
+        if (!reason) return;
+
+        fetch(`/report/post/${postId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'reason=' + encodeURIComponent(reason)
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+        });
+    });
+});   
+document.querySelectorAll('.report-comment-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+
+        const commentId = this.dataset.commentId;
+        const reason = prompt("신고 사유를 입력하세요");
+
+        if (!reason) return;
+
+        fetch(`/report/comment/${commentId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: 'reason=' + encodeURIComponent(reason)
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+        });
+    });
 });
 </script>
 {% endblock %}

@@ -90,7 +90,9 @@ def write():
 @login_required
 def delete(post_id):
     post_to_delete = Post.query.get_or_404(post_id)
-    if post_to_delete.author_id != session['user_id']:
+    user = User.query.get(session['user_id'])
+
+    if post_to_delete.author_id != session['user_id'] and not user.is_admin:
         return "권한이 없습니다."
 
     category = post_to_delete.category  # 삭제 전 카테고리 저장
@@ -111,9 +113,10 @@ def delete(post_id):
 @login_required
 def update(post_id):
     post = Post.query.get_or_404(post_id)
+    user = User.query.get(session['user_id'])
 
     # 작성자 확인
-    if post.author_id != session['user_id']:
+    if post.author_id != session['user_id'] and not user.is_admin:
         return "권한이 없습니다."
 
     if request.method == 'POST':

@@ -5,6 +5,19 @@
 
     <h3>🚨 신고 관리</h3>
 
+    <!-- 🔥 필터 버튼 -->
+    <div class="mb-3">
+        <a href="/admin/reports"
+           class="btn btn-sm {% if not status or status != 'all' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+            미처리
+        </a>
+
+        <a href="/admin/reports?status=all"
+           class="btn btn-sm {% if status == 'all' %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+            전체
+        </a>
+    </div>
+
     <table class="table table-bordered mt-3">
         <thead>
             <tr>
@@ -18,10 +31,11 @@
         </thead>
 
         <tbody>
-        {% for r in reports %}
+        {% for r in reports.items %}
             <tr>
                 <td>{{ r.id }}</td>
 
+                <!-- 타입 -->
                 <td>
                     {% if r.post_id %}
                         글
@@ -30,26 +44,65 @@
                     {% endif %}
                 </td>
 
+                <!-- 대상 -->
                 <td>
                     {% if r.post_id %}
-                        post_id: {{ r.post_id }}
+                        {% if r.post %}
+                            <a href="/post/{{ r.post_id }}">
+                                글 보기 ({{ r.post_id }})
+                            </a>
+                            <span class="badge bg-danger ms-2">
+                                신고 {{ post_count_dict.get(r.post_id, 0) }}회
+                            </span>
+                        {% else %}
+                            <span class="text-danger">삭제된 글</span>
+                        {% endif %}
                     {% else %}
-                        comment_id: {{ r.comment_id }}
+                        {% if r.comment %}
+                            <a href="/post/{{ r.comment.post_id }}#comment-{{ r.comment_id }}">
+                                댓글 보기 ({{ r.comment_id }})
+                            </a>
+                            <span class="badge bg-danger ms-2">
+                                신고 {{ comment_count_dict.get(r.comment_id, 0) }}회
+                            </span>
+                        {% else %}
+                            <span class="text-danger">삭제된 댓글</span>
+                        {% endif %}
                     {% endif %}
                 </td>
 
+                <!-- 신고 사유 -->
                 <td>{{ r.reason }}</td>
 
-                <td>{{ r.status }}</td>
-
+                <!-- 상태 -->
                 <td>
                     {% if r.status == "pending" %}
-                    <button class="btn btn-sm btn-success resolve-btn"
-                            data-id="{{ r.id }}">
-                        처리완료
-                    </button>
-                    {% else %}
-                        완료
+                        <span class="badge bg-warning text-dark">대기중</span>
+                    {% elif r.status == "deleted" %}
+                        <span class="badge bg-danger">삭제됨</span>
+                    {% elif r.status == "ignored" %}
+                        <span class="badge bg-secondary">무시됨</span>
+                    {% endif %}
+                </td>
+
+                <!-- 처리 -->
+                <td>
+                    {% if r.status == "pending" %}
+                        <button class="btn btn-sm btn-danger delete-btn"
+                                data-id="{{ r.id }}">
+                            삭제
+                        </button>
+
+                        <button class="btn btn-sm btn-secondary ignore-btn"
+                                data-id="{{ r.id }}">
+                            무시
+                        </button>
+
+                    {% elif r.status == "deleted" %}
+                        <span class="text-danger">삭제 완료</span>
+
+                    {% elif r.status == "ignored" %}
+                        <span class="text-muted">무시됨</span>
                     {% endif %}
                 </td>
             </tr>
@@ -57,23 +110,79 @@
         </tbody>
 
     </table>
+
+    <!-- 🔥 페이징 -->
+    <div class="mt-4 text-center">
+
+        {% if reports.has_prev %}
+            <a href="?status={{ status }}&page={{ reports.prev_num }}"
+               class="btn btn-sm btn-outline-secondary">
+                이전
+            </a>
+        {% endif %}
+
+        <span class="mx-2">
+            {{ reports.page }} / {{ reports.pages }}
+        </span>
+
+        {% if reports.has_next %}
+            <a href="?status={{ status }}&page={{ reports.next_num }}"
+               class="btn btn-sm btn-outline-secondary">
+                다음
+            </a>
+        {% endif %}
+
+    </div>
+
 </div>
+
+<!-- 🔥 JS -->
 <script>
-document.querySelectorAll('.resolve-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+document.addEventListener("DOMContentLoaded", function() {
 
-        const id = this.dataset.id;
+    // 삭제
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
 
-        fetch(`/admin/report/resolve/${id}`, {
-            method: 'POST'
-        })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                location.reload();
-            }
+            if (!confirm("진짜 삭제할까?")) return;
+
+            const id = this.dataset.id;
+
+            fetch(`/admin/report/action/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=delete'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) location.reload();
+            });
         });
     });
+
+    // 무시
+    document.querySelectorAll('.ignore-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+
+            const id = this.dataset.id;
+
+            fetch(`/admin/report/action/${id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'action=ignore'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) location.reload();
+            });
+        });
+    });
+
 });
 </script>
+
 {% endblock %}

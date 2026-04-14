@@ -45,7 +45,7 @@ def report_comment(comment_id):
     existing = Report.query.filter_by(
         reporter_id=session['user_id'],
         comment_id=comment_id
-    )
+    ).first()
 
     if existing:
         return jsonify({

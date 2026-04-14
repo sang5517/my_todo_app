@@ -8,7 +8,4 @@ class Like(db.Model):
     comment_id = db.Column(db.Integer, db.ForeignKey('comment.id'), nullable=True)  # 🔥 Integer 추가
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    user = db.relationship('User', backref='likes')
-    post = db.relationship('Post', backref='likes')
-
-    
+   

@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from utils.email import send_email,generate_code
 from flask import jsonify
 from models.post import Post
+from models.report import Report
 import re
 auth_bp = Blueprint('auth', __name__)
 
@@ -355,3 +356,27 @@ def update_nickname():
     db.session.commit()
 
     return jsonify({"message": "닉네임 변경 완료", "success": True})
+
+@auth_bp.route('/delete-account', methods=['POST'])
+def delete_account():
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "로그인 필요"})
+
+    user = User.query.get(session['user_id'])
+
+    # 🔥 작성글 삭제
+    Post.query.filter_by(author_id=user.id).delete()
+
+    # 🔥 댓글 삭제 (여기 수정됨)
+    Comment.query.filter_by(user_id=user.id).delete()
+
+
+
+    # 🔥 유저 삭제
+    db.session.delete(user)
+
+    db.session.commit()
+
+    session.clear()
+
+    return jsonify({"success": True, "message": "회원탈퇴 완료"})

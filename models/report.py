@@ -13,8 +13,7 @@ class Report(db.Model):
 
     status = db.Column(db.String(20), default="pending") # 처리 여부
     
-    post = db.relationship("Post", foreign_keys=[post_id])
-    comment = db.relationship("Comment", foreign_keys=[comment_id])
+   
 
 
 

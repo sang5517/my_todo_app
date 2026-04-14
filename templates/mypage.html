@@ -74,7 +74,10 @@
                     내가 쓴 댓글 
                 </a>
             </div>
-
+            <!-- 회원탈퇴 -->
+             <button id="delete-account-btn" class="btn btn-danger mt-3">
+                회원탈퇴
+            </button>
         </div>
     </div>
 </div>
@@ -192,5 +195,22 @@ function cancelPwChange() {
     document.getElementById('new-pw').value = '';
     document.getElementById('new-pw2').value = '';
 }
+</script>
+<script>
+document.getElementById("delete-account-btn").addEventListener("click", function() {
+
+    if (!confirm("정말 탈퇴하시겠습니까?")) return;
+
+    fetch("/delete-account", {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("탈퇴 완료");
+            window.location.href = "/";
+        }
+    });
+});
 </script>
 {% endblock %}

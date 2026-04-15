@@ -14,6 +14,8 @@ class User(db.Model):
     posts = db.relationship('Post', backref='author', lazy=True)
     comments = db.relationship('Comment', backref='user', lazy=True)  # backref 여기만
     is_verified = db.Column(db.Boolean, default=False)
+    is_deleted = db.Column(db.Boolean, default=False)
+    deleted_at = db.Column(db.DateTime, nullable=True)
     
 
     likes = db.relationship(

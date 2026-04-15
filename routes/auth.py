@@ -7,6 +7,7 @@ from utils.email import send_email,generate_code
 from flask import jsonify
 from models.post import Post
 from models.report import Report
+from datetime import datetime, timedelta
 import re
 auth_bp = Blueprint('auth', __name__)
 
@@ -44,12 +45,28 @@ def register():
         return jsonify({"message": "이메일 인증 먼저 해주세요", "success": False})
 
     existing_user = User.query.filter_by(username=username).first()
+    
+    print("=== DEBUG START ===")
+    print("username:", username)
 
     if existing_user:
-        if existing_user.provider != "local":
-            return jsonify({"message": "소셜 계정입니다", "success": False})
-        else:
+        print("existing_user:", existing_user.username)
+        print("is_deleted:", existing_user.is_deleted)
+        print("deleted_at:", existing_user.deleted_at)
+    else:
+        print("existing_user: None")
+
+    print("=== DEBUG END ===")
+    if existing_user:
+        if not existing_user.is_deleted:
             return jsonify({"message": "이미 가입된 아이디", "success": False})
+
+        # 탈퇴 계정이면 30일 체크
+        if existing_user.deleted_at and datetime.utcnow() - existing_user.deleted_at < timedelta(days=30):
+            return jsonify({
+                "message": "탈퇴 후 30일 이내 재가입 불가",
+                "success": False
+            })
 
     # 🔥 이메일 중복 체크 추가
     existing_email = User.query.filter_by(email=email).first()
@@ -79,16 +96,46 @@ def register():
 
     return jsonify({"message": "회원가입 성공", "success": True})
 
-@auth_bp.route('/check-username',methods=['POST'])
+@auth_bp.route('/check-username', methods=['POST'])
 def check_username():
     username = request.form.get('username')
 
     user = User.query.filter_by(username=username).first()
 
-    if user:
-        return jsonify({"message": "이미 사용중인 아이디", "available" : False})
-    else:
-        return jsonify({"message": "사용 가능한 아이디", "available": True})
+    if not user:
+        return jsonify({
+            "available": True,
+            "message": "사용 가능한 아이디"
+        })
+
+    # 🔥 소셜 계정
+    if user.provider != "local":
+        return jsonify({
+            "available": False,
+            "message": "소셜 계정 아이디입니다"
+        })
+
+    # 🔥 탈퇴 계정
+    if user.is_deleted:
+
+        # 30일 제한
+        if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
+            return jsonify({
+                "available": False,
+                "message": "탈퇴 후 30일 이내 재가입 불가"
+            })
+
+        # 30일 지난 계정
+        return jsonify({
+            "available": True,
+            "message": "재가입 가능한 아이디입니다"
+        })
+
+    # 🔥 일반 가입자
+    return jsonify({
+        "available": False,
+        "message": "이미 사용중인 아이디"
+    })
     
 
 @auth_bp.route('/login', methods=['GET','POST'])
@@ -104,6 +151,9 @@ def login():
     if not user:
         return jsonify({"message": "아이디 없음", "success": False})
 
+    if user.is_deleted:
+        return jsonify({"success": False, "message": "탈퇴한 계정입니다."})
+    
     if user.provider != "local":
         return jsonify({"message": "소셜 로그인 계정입니다", "success": False})
 
@@ -363,7 +413,13 @@ def delete_account():
         return jsonify({"success": False, "message": "로그인 필요"})
 
     user = User.query.get(session['user_id'])
+    password = request.form.get("password")
 
+    # 비밀번호 확인
+    if user.provider == "local":
+        if not check_password_hash(user.password, password):
+            return jsonify({"success": False, "message": "비밀번호 틀림"})
+        
     # 🔥 작성글 삭제
     Post.query.filter_by(author_id=user.id).delete()
 
@@ -373,7 +429,8 @@ def delete_account():
 
 
     # 🔥 유저 삭제
-    db.session.delete(user)
+    user.is_deleted = True
+    user.deleted_at = datetime.utcnow()
 
     db.session.commit()
 

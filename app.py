@@ -21,6 +21,7 @@ from routes.auth import auth_bp
 from routes.comment import comment_bp
 from utils.format import mask_email, mask_username
 from routes.auth import clean_nickname
+from utils.time import time_ago
 # =====================
 # 환경 변수 & 앱 초기화
 # =====================
@@ -38,6 +39,7 @@ app.register_blueprint(admin_bp)
 app.jinja_env.globals['timedelta'] = timedelta
 app.jinja_env.globals['mask_email'] = mask_email
 app.jinja_env.globals['mask_username'] = mask_username
+app.jinja_env.globals.update(time_ago=time_ago)
 db.init_app(app)
 
 
@@ -124,6 +126,15 @@ def google_login_process():
 
     user = User.query.filter_by(email=email).first()
 
+    # 🔥 탈퇴 계정 차단 (핵심)
+    if user and user.is_deleted:
+        if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
+            return "탈퇴 후 30일 이내 계정입니다. 로그인 불가"
+        else:
+            db.session.delete(user)
+            db.session.commit()
+            return "계정이 완전히 삭제되었습니다. 다시 가입해주세요"
+        
     if user:
         if user.provider == "local":
             session['pending_link'] = email
@@ -209,7 +220,15 @@ def kakao_login_process():
         return "이메일 없음 (동의 필요)"
 
     user = User.query.filter_by(email=email).first()
-
+    # 🔥 탈퇴 계정 차단
+    if user and user.is_deleted:
+        if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
+            return "탈퇴 후 30일 이내 계정입니다. 로그인 불가"
+        else:
+            db.session.delete(user)
+            db.session.commit()
+            return "계정이 완전히 삭제되었습니다. 다시 가입해주세요"
+        
     if user:
         if user.provider == "local":
             session['pending_link'] = email

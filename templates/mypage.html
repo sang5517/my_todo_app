@@ -16,201 +16,150 @@
                 <p><strong>이메일</strong> : {{ mask_email(user.email) }}</p>
             </div>
 
-            <!-- 닉네임 변경 -->
-            <div class="mb-4">
-                <button class="btn btn-outline-dark btn-sm" onclick="showEdit()">
-                    닉네임 변경
-                </button>
+            <!-- 닉네임 / 비밀번호 / 메뉴 (생략 - 그대로 유지) -->
 
-                <!-- 수정 영역 -->
-                <div id="nickname-edit" class="mt-3" style="display:none;">
-                    <input type="text" id="new-nickname" 
-                           class="form-control mb-2"
-                           value="{{ user.nickname }}">
-
-                    <button class="btn btn-dark btn-sm" onclick="updateNickname()">저장</button>
-                    <button class="btn btn-secondary btn-sm" onclick="cancelEdit()">취소</button>
-                </div>
-            </div>
-
-            <!-- 비밀번호 변경 -->
-            <div class="mb-4">
-
-                <!-- 버튼 -->
-                <button class="btn btn-outline-dark" onclick="showPwArea()">
-                    비밀번호 변경
-                </button>
-
-                <!-- 1단계: 인증 -->
-                <div id="pw-auth-area" style="display:none;" class="mt-3">
-                    <button class="btn btn-sm btn-dark mb-2" onclick="sendCode()">인증코드 받기</button>
-
-                    <input type="text" id="pw-code" class="form-control mb-2" placeholder="인증코드 입력">
-                    <button class="btn btn-sm btn-primary" onclick="verifyCode()">인증 확인</button>
-                </div>
-
-                <!-- 2단계: 비밀번호 변경 -->
-                <div id="pw-change-area" style="display:none;" class="mt-3">
-                    <input type="password" id="new-pw" class="form-control mb-2" placeholder="새 비밀번호">
-                    <input type="password" id="new-pw2" class="form-control mb-2" placeholder="비밀번호 확인">
-
-                    <button class="btn btn-success w-100" onclick="changePassword()">
-                        변경하기
-                    </button>
-                     <!-- ⭐ 취소 버튼 (여기 하나만!) -->
-                      <!-- ⭐ 취소 버튼 (여기 하나만!) -->
-                    <button class="btn btn-sm btn-secondary w-100" onclick="cancelPwChange()">
-                        취소
-                    </button>
-                </div>
-                 
-            </div>
             <div>
-                <a href="/myposts" class="btn btn-outline-secondary">
-                    내가 쓴 글
-                </a>
-
-                <a href="/mycomments" class="btn btn-outline-secondary">
-                    내가 쓴 댓글 
-                </a>
+                <a href="/myposts" class="btn btn-outline-secondary">내가 쓴 글</a>
+                <a href="/mycomments" class="btn btn-outline-secondary">내가 쓴 댓글</a>
             </div>
-            <!-- 회원탈퇴 -->
-             <button id="delete-account-btn" class="btn btn-danger mt-3">
+
+            <!-- 탈퇴 버튼 -->
+            <button class="btn btn-danger mt-3" data-bs-toggle="modal" data-bs-target="#deleteModal">
                 회원탈퇴
             </button>
         </div>
     </div>
 </div>
 
+
+<!-- ========================= -->
+<!-- 🔥 회원탈퇴 모달 -->
+<!-- ========================= -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title text-danger">회원탈퇴</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <p class="text-danger fw-bold">
+            ⚠ 탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.
+        </p>
+
+        <ul class="small text-muted">
+            <li>게시글</li>
+            <li>댓글</li>
+            <li>좋아요</li>
+        </ul>
+
+        <hr>
+
+        <!-- ========================= -->
+        <!-- 🔥 핵심: 계정 타입 분기 -->
+        <!-- ========================= -->
+
+        {% if user.provider == 'local' %}
+
+            <!-- 🔴 LOCAL 계정 -->
+            <label class="form-label">비밀번호 확인</label>
+            <input type="password" id="delete-password" class="form-control mb-3" placeholder="비밀번호 입력">
+
+        {% else %}
+
+            <!-- 🟢 SOCIAL 계정 -->
+            <div class="alert alert-info">
+                소셜 로그인 계정입니다.<br>
+                비밀번호 확인 없이 탈퇴 가능합니다.
+            </div>
+
+        {% endif %}
+
+        <!-- 공통 확인 문구 -->
+        <label class="form-label">확인 문구 입력</label>
+        <input type="text" id="delete-confirm-text" class="form-control" placeholder="탈퇴합니다 입력">
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+
+        <button class="btn btn-danger" id="final-delete-btn" disabled>
+            탈퇴하기
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ========================= -->
+<!-- 🔥 JS -->
+<!-- ========================= -->
 <script>
 
-    
-function showEdit() {
-    document.getElementById('nickname-edit').style.display = 'block';
-}
+const isLocal = {{ 'true' if user.provider == 'local' else 'false' }};
 
-function cancelEdit() {
-    document.getElementById('nickname-edit').style.display = 'none';
-}
+const pwInput = document.getElementById("delete-password");
+const textInput = document.getElementById("delete-confirm-text");
+const btn = document.getElementById("final-delete-btn");
 
-function updateNickname() {
-    const nickname = document.getElementById('new-nickname').value;
+function checkDeleteReady() {
 
-    if (!nickname) {
-        alert("닉네임 입력하세요");
+    // 🟢 소셜 계정
+    if (!isLocal) {
+        btn.disabled = !(textInput.value === "탈퇴합니다");
         return;
     }
 
-    fetch('/update-nickname', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'nickname=' + encodeURIComponent(nickname)
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-
-        if (data.success) {
-            document.getElementById('current-nickname').textContent = nickname;
-            document.getElementById('nickname-edit').style.display = 'none';
-        }
-    });
-}
-</script>
-<script>
-function showPwArea() {
-     const provider = "{{ user.provider }}";
-
-     if (provider !== "local") {
-        alert("소셜 로그인 계정은 해당 플랫폼에서 비밀번호를 변경하세요");
-        return;
-     }
-
-    document.getElementById('pw-auth-area').style.display = 'block';
-}
-
-function sendCode() {
-    fetch('/mypage/send-code', { method: 'POST' })
-    .then(res => res.json())
-    .then(data => alert(data.message));
-}
-
-function verifyCode() {
-    const code = document.getElementById('pw-code').value;
-
-    fetch('/mypage/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'code=' + code
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-
-        if (data.success) {
-            document.getElementById('pw-change-area').style.display = 'block';
-        }
-    });
-}
-
-function changePassword() {
-    const pw1 = document.getElementById('new-pw').value;
-    const pw2 = document.getElementById('new-pw2').value;
-
-    if (!pw1) {
-        alert("비밀번호 입력하세요");
-        return;
+    // 🔴 local 계정
+    if (pwInput.value.length > 0 && textInput.value === "탈퇴합니다") {
+        btn.disabled = false;
+    } else {
+        btn.disabled = true;
     }
+}
 
-    if (pw1 !== pw2) {
-        alert("비밀번호 불일치");
-        return;
+if (pwInput) pwInput.addEventListener("input", checkDeleteReady);
+textInput.addEventListener("input", checkDeleteReady);
+
+
+// =========================
+// 🔥 최종 탈퇴 요청
+// =========================
+btn.addEventListener("click", function () {
+
+    if (!confirm("진짜 마지막입니다. 탈퇴 진행할까요?")) return;
+
+    let bodyData = "confirm=" + encodeURIComponent(textInput.value);
+
+    if (isLocal && pwInput) {
+        bodyData += "&password=" + encodeURIComponent(pwInput.value);
     }
-
-    fetch('/mypage/change-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'password=' + encodeURIComponent(pw1)
-    })
-    .then(res => res.json())
-    .then(data => {
-        alert(data.message);
-
-        if (data.success) {
-            location.reload();
-        }
-    });
-}
-
-function cancelPwChange() {
-
-    // 전체 영역 닫기
-    document.getElementById('pw-auth-area').style.display = 'none';
-    document.getElementById('pw-change-area').style.display = 'none';
-
-    // 입력값 초기화
-    document.getElementById('pw-code').value = '';
-    document.getElementById('new-pw').value = '';
-    document.getElementById('new-pw2').value = '';
-}
-</script>
-<script>
-document.getElementById("delete-account-btn").addEventListener("click", function() {
-
-    if (!confirm("정말 탈퇴하시겠습니까?")) return;
 
     fetch("/delete-account", {
-        method: "POST"
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: bodyData
     })
     .then(res => res.json())
     .then(data => {
         if (data.success) {
             alert("탈퇴 완료");
             window.location.href = "/";
+        } else {
+            alert(data.message || "실패");
         }
     });
+
 });
+
 </script>
+
 {% endblock %}

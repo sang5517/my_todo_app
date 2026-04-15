@@ -11,6 +11,7 @@ from datetime import timedelta
 import html
 from utils.filter import contains_bad_word
 from sqlalchemy import or_
+from sqlalchemy import func
 post_bp = Blueprint('post', __name__)
 like_bp = Blueprint('like', __name__)
 
@@ -22,7 +23,7 @@ def index():
         'index.html',
         posts=posts,
         category='general',
-        title='최근 글',
+        title='자유게시판',
         keyword=keyword
     )
 
@@ -316,12 +317,25 @@ def mypage_delete_comment(comment_id):
 def list_posts(category):
     page = request.args.get('page', 1, type=int)
     keyword = request.args.get('q', '').strip()
-
+    sort = request.args.get('sort', 'latest') # 추가
     query = Post.query.filter_by(category=category)
 
     if keyword:
         query = query.filter(Post.title.contains(keyword))
 
+    # 정렬 분기
+    if sort == "views":
+        query = query.order_by(Post.views.desc())
+    elif sort == "popular":
+        query = query.outerjoin(
+            Like, (Post.id == Like.post_id) & (Like.comment_id == None)
+        )\
+        .group_by(Post.id)\
+        .order_by(func.count(Like.id).desc())
+
+    else: # Latest
+        query = query.order_by(Post.created_at.desc())
+    
     posts = query.order_by(Post.created_at.desc())\
                  .paginate(page=page, per_page=10, error_out=False)
 

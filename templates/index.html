@@ -1,83 +1,197 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+body {
+    background: #f4f6f8;
+}
+
+/* 전체 카드 리스트 느낌 */
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #e9ecef;
+    background: white;
+    transition: 0.15s;
+}
+
+.list-group-item:hover {
+    background: #f9fafb;
+    transform: translateY(-1px);
+}
+
+/* 제목 */
+.post-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+/* 메타 정보 */
+.meta {
+    font-size: 0.85rem;
+    color: #888;
+}
+
+
+</style>
+
 <div class="container mt-4">
 
     <!-- 🔍 검색 -->
-    <form method="GET" action="{{ request.path }}" class="d-flex mb-3">
-        <input type="text" name="q" class="form-control me-2"
-               placeholder="검색어 입력"
-               value="{{ request.args.get('q', '') }}">
+    <form method="GET" action="{{ request.path }}" class="mb-3">
+        <div class="input-group">
 
-        <!-- 카테고리 유지 -->
-        <input type="hidden" name="category" value="{{ category }}">
+            <span class="input-group-text bg-white">🔍</span>
 
-        <button class="btn btn-outline-dark">검색</button>
+            <input type="text"
+                   name="q"
+                   class="form-control"
+                   placeholder="검색어를 입력하세요"
+                   value="{{ request.args.get('q', '') }}">
+
+            <input type="hidden" name="category" value="{{ category }}">
+            <input type="hidden" name="sort" value="{{ request.args.get('sort', 'latest') }}">
+
+            <button class="btn btn-dark">검색</button>
+        </div>
     </form>
 
     <!-- 상단 -->
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4>최근 글</h4>
-        {% if category != 'notice' or user.is_admin %}
-        <a href="{{ url_for('post.write', category=category) }}" 
-        class="btn btn-sm btn-dark" id="write-btn">
-            글쓰기
-        </a>
-        {% endif %}
+
+        <span class="fw-bold fs-5">{{ title }}</span>
+
+        <div class="d-flex align-items-center gap-2">
+
+            <!-- 정렬 -->
+            <select class="form-select form-select-sm" style="width: 130px;"
+                    onchange="location = this.value;">
+
+                <option value="{{ url_for(request.endpoint, category=category, sort='latest', q=request.args.get('q')) }}"
+                    {% if request.args.get('sort', 'latest') == 'latest' %}selected{% endif %}>
+                    최신순
+                </option>
+
+                <option value="{{ url_for(request.endpoint, category=category, sort='popular', q=request.args.get('q')) }}"
+                    {% if request.args.get('sort') == 'popular' %}selected{% endif %}>
+                    인기순
+                </option>
+
+                <option value="{{ url_for(request.endpoint, category=category, sort='views', q=request.args.get('q')) }}"
+                    {% if request.args.get('sort') == 'views' %}selected{% endif %}>
+                    조회순
+                </option>
+
+            </select>
+
+            <!-- 글쓰기 -->
+            {% if category != 'notice' or user.is_admin %}
+            <a href="{{ url_for('post.write', category=category) }}"
+               class="btn btn-sm btn-dark"
+               id="write-btn">
+                글쓰기
+            </a>
+            {% endif %}
+
+        </div>
     </div>
 
     <!-- 리스트 -->
-    <table class="table table-hover align-middle">
-        <thead class="table-light">
-            <tr>
-                <th>제목</th>
-                <th style="width: 15%">작성자</th>
-                <th style="width: 20%">날짜</th>
-                <th style="width: 10%">조회</th>
-            </tr>
-        </thead>
+    <div class="list-group">
 
-        <tbody>
-            {% for post in posts.items %}
-            <tr>
-                <td>
-                    <a href="{{ url_for('post.detail', post_id=post.id) }}">
-                        {{ post.title }}
-                    </a>
-                </td>
-                <td>
-                    <strong>{{ post.author.nickname }}</strong>
-                    <span style="color: gray;">({{ post.author.username }})</span>
-                </td>
-                <td>{{ post.created_at + timedelta(hours=9) }}</td>
-                <td>{{ post.views }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        {% for post in posts.items %}
+        <a href="{{ url_for('post.detail', post_id=post.id) }}"
+           class="list-group-item list-group-item-action py-3">
 
-    <!-- 🔥 페이징 (검색 상태 유지 핵심) -->
-    <div class="d-flex justify-content-center mt-3">
+            <!-- 제목 + 상태 -->
+            <div class="d-flex justify-content-between align-items-center">
 
-        {% if posts.has_prev %}
-            <a href="{{ url_for('post.index',
-                                page=posts.prev_num,
-                                category=category,
-                                q=request.args.get('q')) }}"
-               class="btn btn-outline-secondary me-2">이전</a>
-        {% endif %}
+                <div>
 
-        <span class="mx-2">페이지 {{ posts.page }} / {{ posts.pages }}</span>
+                    <span class="post-title">{{ post.title }}</span>
 
-        {% if posts.has_next %}
-            <a href="{{ url_for('post.index',
-                                page=posts.next_num,
-                                category=category,
-                                q=request.args.get('q')) }}"
-               class="btn btn-outline-secondary ms-2">다음</a>
-        {% endif %}
+                    <!-- 🔥 인기 -->
+                    {% if post.likes|length >= 5 %}
+                    <span class="badge bg-danger ms-1">🔥 HOT</span>
+                    {% endif %}
+
+                    <!-- 댓글 -->
+                    <span class="ms-2 text-muted">
+                        💬 {{ post.comments|length }}
+                    </span>
+
+                    <!-- 좋아요 -->
+                    <span class="ms-2 text-muted">
+                        👍 {{ post.likes|length }}
+                    </span>
+
+                </div>
+
+                <small class="text-muted">
+                    조회 {{ post.views }}
+                </small>
+
+            </div>
+
+            <!-- 작성자 + 시간 -->
+            <div class="meta mt-1">
+                {{ post.author.nickname }}
+                • {{ time_ago(post.created_at) }}
+            </div>
+
+        </a>
+        {% endfor %}
 
     </div>
+
+    <!-- 페이지네이션 -->
+    <nav class="mt-4">
+
+        {% if posts.pages and posts.pages > 0 %}
+        <ul class="pagination justify-content-center">
+
+            {% if posts.has_prev %}
+            <li class="page-item">
+                <a class="page-link"
+                   href="{{ url_for(request.endpoint,
+                                    page=posts.prev_num,
+                                    category=category,
+                                    q=request.args.get('q'),
+                                    sort=request.args.get('sort','latest')) }}">
+                    이전
+                </a>
+            </li>
+            {% endif %}
+
+            {% for p in range(1, posts.pages + 1) %}
+            <li class="page-item {% if p == posts.page %}active{% endif %}">
+                <a class="page-link"
+                   href="{{ url_for(request.endpoint,
+                                    page=p,
+                                    category=category,
+                                    q=request.args.get('q'),
+                                    sort=request.args.get('sort','latest')) }}">
+                    {{ p }}
+                </a>
+            </li>
+            {% endfor %}
+
+            {% if posts.has_next %}
+            <li class="page-item">
+                <a class="page-link"
+                   href="{{ url_for(request.endpoint,
+                                    page=posts.next_num,
+                                    category=category,
+                                    q=request.args.get('q'),
+                                    sort=request.args.get('sort','latest')) }}">
+                    다음
+                </a>
+            </li>
+            {% endif %}
+
+        </ul>
+        {% endif %}
+
+    </nav>
 
 </div>
 

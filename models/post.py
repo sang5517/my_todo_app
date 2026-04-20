@@ -30,3 +30,10 @@ class Post(db.Model):
     backref='post',
     cascade='all, delete-orphan'
     )
+
+    files = db.relationship(
+    'File',
+    backref='post',
+    lazy=True,
+    cascade='all, delete-orphan'
+    )

@@ -3,7 +3,7 @@
 {% block title %}글 작성{% endblock %}
 
 {% block content %}
-<form method="POST" id="write-form">
+<form method="POST" id="write-form" enctype="multipart/form-data">
 
     <div class="mb-3">
         <input type="text" name="title"
@@ -22,7 +22,15 @@
                   maxlength="2000"></textarea>
     </div>
 
-    <!-- 카테고리 유지 -->
+    <!-- 🔥 여러 파일 업로드 -->
+    <div class="mb-3">
+        <input type="file"
+               name="files"
+               id="files"
+               class="form-control"
+               multiple>
+    </div>
+
     <input type="hidden" name="category" value="{{ default_category }}">
 
     <button type="submit" class="btn btn-dark w-100">
@@ -31,34 +39,36 @@
 
 </form>
 
-<!-- 🔥 AJAX -->
 <script>
 document.getElementById('write-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
-    const title = document.getElementById('title').value;
-    const content = document.getElementById('content').value;
-    const category = document.querySelector('input[name="category"]').value;
+    const formData = new FormData();
+
+    formData.append("title", document.getElementById('title').value);
+    formData.append("content", document.getElementById('content').value);
+    formData.append("category", document.querySelector('input[name="category"]').value);
+
+    // 🔥 여러 파일 처리
+    const files = document.getElementById('files').files;
+
+    for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+    }
 
     fetch('/write', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: `title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}&category=${encodeURIComponent(category)}`
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
-
-        // ❌ 실패만 알림
         if (!data.success) {
             alert(data.message);
             return;
         }
-
-        // ✅ 성공 시 바로 이동
         window.location.href = data.redirect;
     });
 });
 </script>
+
 {% endblock %}

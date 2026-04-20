@@ -41,7 +41,29 @@
         <div class="mb-4" style="white-space: pre-line;">
             {{ post.content }}
         </div>
+        {% if post.file_path %}
+            <div class="mt-3">
 
+                {% if post.file_type == 'image' %}
+                    <img src="{{ url_for('static', filename='uploads/' + post.file_path) }}"
+                        class="img-fluid rounded">
+
+                {% elif post.file_type == 'video' %}
+                    <video controls class="w-100">
+                        <source src="{{ url_for('static', filename='uploads/' + post.file_path) }}">
+                    </video>
+
+                {% else %}
+                    <div class="mt-2">
+                        📎 
+                        <a href="{{ url_for('static', filename='uploads/' + post.file_path) }}" download>
+                            {{ post.original_filename }}
+                        </a>
+                    </div>
+                {% endif %}
+
+            </div>
+        {% endif %}
         <!-- 좋아요 + 댓글수 -->
         <div class="d-flex align-items-center gap-3 mb-3">
             <button id="like-btn" 
@@ -111,7 +133,29 @@
                     <div class="comment-content mt-2">
                         {{ comment.content }}
                     </div>
+                    {% if comment.file_path %}
+                        <div class="mt-2">
 
+                            {% if comment.file_type == 'image' %}
+                                <img src="{{ url_for('static', filename='uploads/' + comment.file_path) }}"
+                                    class="img-fluid rounded" style="max-width:300px;">
+
+                            {% elif comment.file_type == 'video' %}
+                                <video controls style="max-width:300px;">
+                                    <source src="{{ url_for('static', filename='uploads/' + comment.file_path) }}">
+                                </video>
+
+                            {% else %}
+                                <div>
+                                    📎 
+                                    <a href="{{ url_for('static', filename='uploads/' + comment.file_path) }}" download>
+                                        {{ comment.original_filename }}
+                                    </a>
+                                </div>
+                            {% endif %}
+
+                        </div>
+                    {% endif %}
                     <!-- 수정 input -->
                     <input type="text"
                            class="form-control edit-input mt-2"
@@ -163,9 +207,10 @@
 
             <!-- 댓글 입력 -->
             {% if logged_in %}
-            <form id="comment-form" class="mt-3">
+            <form id="comment-form" class="mt-3" enctype="multipart/form-data">
                 <div class="input-group">
                     <input type="text" id="comment-input" class="form-control">
+                    <input type="file" id="comment-file" class="form-control">
                     <button type="button" id="comment-submit" class="btn btn-dark">작성</button>
                 </div>
             </form>
@@ -291,29 +336,29 @@ document.querySelectorAll('.cancel-btn').forEach(btn => {
 document.getElementById('comment-submit')?.addEventListener('click', function() {
 
     const content = document.getElementById('comment-input').value;
+    const file = document.getElementById('comment-file').files[0];
     const postId = {{ post.id }};
+
+    const formData = new FormData();
+    formData.append('content', content);
+
+    if (file) {
+        formData.append('file', file);
+    }
 
     fetch(`/comment/write/${postId}`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'content=' + encodeURIComponent(content)
+        body: formData
     })
     .then(res => res.json())
     .then(data => {
-
-        // ❌ 실패일 때만 alert
         if (!data.success) {
             alert(data.message);
             return;
         }
 
-        // ✅ 성공 시 조용히 처리
-        document.getElementById('comment-input').value = ''; // 입력창 초기화
-        location.reload(); // 새로고침 (or 아래 방식으로 더 고급 가능)
+        location.reload();
     });
-
 });
 </script>
 <script>

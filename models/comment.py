@@ -9,7 +9,7 @@ class Comment(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
+    
     likes = db.relationship(
     'Like',
     backref='comment',
@@ -19,5 +19,11 @@ class Comment(db.Model):
     reports = db.relationship(
     'Report',
     backref='comment',
+    cascade='all, delete-orphan'
+    )
+    files = db.relationship(
+    'File',
+    backref='comment',
+    lazy=True,
     cascade='all, delete-orphan'
     )

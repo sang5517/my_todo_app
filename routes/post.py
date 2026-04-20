@@ -4,11 +4,15 @@ from extensions import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from models.user import User
 from models.like import Like
+from models.file import File
 from models.comment import Comment
 from flask import jsonify
 from utils.auth import login_required
 from datetime import timedelta
 import html
+import uuid
+import os
+from werkzeug.utils import secure_filename
 from utils.filter import contains_bad_word
 from sqlalchemy import or_
 from sqlalchemy import func
@@ -33,41 +37,76 @@ def write():
     default_category = request.args.get('category', 'general')
     user = User.query.get(session['user_id'])
 
-    
     if request.method == 'POST':
+
         title = request.form.get('title', '').strip()
         content = request.form.get('content', '').strip()
         category = request.form.get('category', default_category)
-        
-        # 관리자 제한 (여기위치가 핵심 )
+
+        # 관리자 제한
         if category == 'notice' and not user.is_admin:
             return jsonify({
                 "success": False,
                 "message": "관리자만 작성 가능"
             })
-        
+
         # 1. 빈값 체크
         if not title or not content:
             return jsonify({"success": False, "message": "제목과 내용을 입력해주세요"})
-        
+
         # 2. 글자수 제한
         if len(title) > 100:
             return jsonify({"success": False, "message": "제목은 100자 이하로 입력해주세요"})
-        
+
         if len(content) > 2000:
             return jsonify({"success": False, "message": "내용은 2000자 이하로 입력해주세요"})
-        
+
         # 3. 욕설 필터
         if contains_bad_word(title) or contains_bad_word(content):
             return jsonify({"success": False, "message": "부적절한 단어가 포함되어 있습니다"})
-        
+
+        # 🔥 1단계: Post 먼저 저장 (id 생성)
         new_post = Post(
             title=title,
             content=content,
             author_id=session['user_id'],
-            category=category, 
+            category=category
         )
         db.session.add(new_post)
+        db.session.commit()  # 👉 여기서 id 생김
+
+        # 🔥 2단계: 파일 처리
+        files = request.files.getlist('files')
+
+        for file in files:
+            if file and file.filename != "":
+                original_filename = file.filename
+                safe_filename = secure_filename(file.filename)
+
+                filename = str(uuid.uuid4()) + "_" + safe_filename
+
+                upload_dir = os.path.join('static', 'uploads')
+                os.makedirs(upload_dir, exist_ok=True)
+
+                upload_path = os.path.join(upload_dir, filename)
+                file.save(upload_path)
+
+                ext = filename.rsplit('.', 1)[-1].lower()
+
+                if ext in ['jpg','jpeg','png','gif','webp']:
+                    file_type = 'image'
+                elif ext in ['mp4','webm','ogg']:
+                    file_type = 'video'
+                else:
+                    file_type = 'file'
+
+                db.session.add(File(
+                    file_path=filename,
+                    file_type=file_type,
+                    original_filename=original_filename,
+                    post_id=new_post.id
+                ))
+
         db.session.commit()
 
         # 🔥 redirect 대신 JSON

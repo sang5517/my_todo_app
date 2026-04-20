@@ -4,14 +4,61 @@
 
 {% block content %}
 
-<form method="POST">
-    <p>카테고리: {{ post.category }}</p>
-    제목: <input type="text" name="title" value="{{ post.title }}"><br><br>
-    내용: <textarea name="content">{{ post.content }}</textarea><br><br>
-    
-    
-    <a href="{{ url_for('post.detail', post_id=post.id) }}" 
-    class="btn btn-secondary">취소</a>
-    <button type="submit">수정 완료</button>
-</form>
+<div class="card shadow-sm" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-body">
+
+        <!-- 제목 -->
+        <h4 class="mb-4">✏️ 글 수정</h4>
+
+        <!-- 카테고리 -->
+        <div class="mb-3">
+            <label class="form-label text-muted small">카테고리</label>
+            <div class="form-control bg-light">
+                📂 {{ CATEGORY_MAP.get(post.category, post.category) }}
+            </div>
+        </div>
+
+        <form method="POST">
+
+            <!-- 제목 -->
+            <div class="mb-3">
+                <label class="form-label">제목</label>
+                <input type="text" 
+                       name="title" 
+                       value="{{ post.title }}"
+                       class="form-control"
+                       maxlength="100"
+                       required>
+            </div>
+
+            <!-- 내용 -->
+            <div class="mb-4">
+                <label class="form-label">내용</label>
+                <textarea name="content" 
+                          rows="10"
+                          class="form-control"
+                          maxlength="2000"
+                          required>{{ post.content }}</textarea>
+            </div>
+
+            <!-- 버튼 영역 -->
+            <div class="d-flex justify-content-end gap-2">
+
+                <a href="{{ url_for('post.detail', post_id=post.id) }}" 
+                   class="btn btn-outline-secondary">
+                    취소
+                </a>
+
+                <button type="submit" 
+                        class="btn btn-dark">
+                    수정 완료
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
 {% endblock %}

@@ -1,159 +1,177 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- 글 카드 -->
 <div class="card shadow-sm mb-4">
     <div class="card-body">
         
+        <!-- 제목 + 버튼 -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">{{ post.title }}</h3>
-            {% if logged_in %}
-            <button class="btn btn-sm btn-outline-warning report-post-btn"
-                    data-post-id="{{ post.id }}">
-                🚨 신고
-            </button>
-            {% endif %}
-            {% if logged_in and (post.author_id == user_id or user.is_admin) %}
-            <div>
+
+            <div class="d-flex align-items-center gap-2">
+                {% if logged_in and post.author_id != user_id %}
+                <button class="btn btn-sm btn-outline-warning report-post-btn"
+                        data-post-id="{{ post.id }}">
+                    🚨 신고
+                </button>
+                {% endif %}
+
+                {% if logged_in and (post.author_id == user_id or user.is_admin) %}
                 <a href="{{ url_for('post.update', post_id=post.id) }}" 
-                class="btn btn-sm btn-outline-primary me-1">수정</a>
+                   class="btn btn-sm btn-outline-primary">수정</a>
 
                 <a href="{{ url_for('post.delete', post_id=post.id) }}" 
-                class="btn btn-sm btn-outline-danger"
-                onclick="return confirm('삭제하시겠습니까?');">삭제</a>
+                   class="btn btn-sm btn-outline-danger"
+                   onclick="return confirm('삭제하시겠습니까?');">삭제</a>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
 
+        <!-- 작성 정보 -->
         <div class="text-muted small mb-3">
             <strong>{{ post.author.nickname }}</strong>
-            <span style="color: gray;">({{ post.author.username }})</span> |
+            <span class="text-secondary">({{ post.author.username }})</span> |
             {{ (post.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }} |
             조회 {{ post.views }}
         </div>
 
-        <hr>
+        <hr style="border-top: 2px solid #eee;">
 
+        <!-- 본문 -->
         <div class="mb-4" style="white-space: pre-line;">
             {{ post.content }}
         </div>
 
-        <!-- 좋아요 -->
-        <button id="like-btn" 
-                data-post-id="{{ post.id }}"
-                class="btn btn-outline-danger btn-sm mb-3">
-            ❤️ 좋아요 (<span id="like-count">{{ post.likes|length }}</span>)
-        </button>
+        <!-- 좋아요 + 댓글수 -->
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <button id="like-btn" 
+                    data-post-id="{{ post.id }}"
+                    class="btn btn-sm btn-outline-secondary">
+                👍 공감 <span id="like-count">{{ post.likes|length }}</span>
+            </button>
 
-        <!-- 🔥 댓글 영역 -->
-        <hr>
+            <span class="text-muted small">
+                💬 댓글 {{ post.comments|length }}
+            </span>
+        </div>
 
-        <h5 id="comments" class="mb-3">댓글</h5>
+        <hr style="border-top: 2px solid #eee;">
 
-        {% if comments.items %}
-            {% for comment in comments.items %}
-            <div class="border-bottom py-3" id="comment-{{ comment.id }}">
+        <!-- 댓글 영역 -->
+        <div class="bg-light p-3 rounded">
 
-                <!-- 작성자 -->
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong>{{ comment.user.nickname }}</strong>
-                        <span style="color: gray;">({{ comment.user.username }})</span>
-                    </div>
+            <!-- 댓글 헤더 -->
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 id="comments" class="mb-0">댓글</h5>
 
-                    <div class="d-flex align-items-center gap-2">
-                        <small class="text-muted">
-                            {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
-                        </small>
-                        <button class="btn btn-sm btn-outline-warning report-comment-btn"
-                                data-comment-id="{{ comment.id }}">
-                            🚨
-                        </button>
-                        {% if user and (comment.user_id == user.id or user.is_admin) %}
+                <!-- 정렬 -->
+                <div>
+                    <a href="?sort=latest#comments"
+                       class="btn btn-sm btn-outline-secondary me-1">최신순</a>
+                    <a href="?sort=oldest#comments"
+                       class="btn btn-sm btn-outline-secondary">등록순</a>
+                </div>
+            </div>
+
+            {% if comments.items %}
+                {% for comment in comments.items %}
+                <div class="border-bottom py-3" style="border-color:#e5e5e5;" id="comment-{{ comment.id }}">
+
+                    <!-- 작성자 -->
+                    <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <a href="#" class="text-primary small edit-btn">수정</a>
-                            
-                            <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}" 
-                               class="text-danger small"
-                               onclick="return confirm('댓글 삭제하시겠습니까?');">
-                               삭제
-                            </a>
-                            
+                            <strong>{{ comment.user.nickname }}</strong>
+                            <span class="text-secondary">({{ comment.user.username }})</span>
                         </div>
-                        {% endif %}
+
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="text-muted">
+                                {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
+                            </small>
+
+                            {% if logged_in and comment.user_id != user_id %}
+                            <button class="btn btn-sm btn-outline-warning report-comment-btn"
+                                    data-comment-id="{{ comment.id }}">
+                                🚨
+                            </button>
+                            {% endif %}
+
+                            {% if user and (comment.user_id == user.id or user.is_admin) %}
+                            <div>
+                                <a href="#" class="text-primary small edit-btn">수정</a>
+                                <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}" 
+                                   class="text-danger small"
+                                   onclick="return confirm('댓글 삭제하시겠습니까?');">삭제</a>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
+
+                    <!-- 내용 -->
+                    <div class="comment-content mt-2">
+                        {{ comment.content }}
+                    </div>
+
+                    <!-- 수정 input -->
+                    <input type="text"
+                           class="form-control edit-input mt-2"
+                           value="{{ comment.content }}"
+                           style="display:none;">
+
+                    <!-- 버튼 -->
+                    <div class="mt-2 d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-dark save-btn"
+                                data-comment-id="{{ comment.id }}"
+                                style="display:none;">저장</button>
+
+                        <button class="btn btn-sm btn-secondary cancel-btn"
+                                style="display:none;">취소</button>
+
+                        <button class="comment-like-btn btn btn-sm btn-outline-secondary"
+                                data-comment-id="{{ comment.id }}">
+                            👍 공감 <span class="comment-like-count">
+                                {{ comment.likes|length }}
+                            </span>
+                        </button>
+                    </div>
+
                 </div>
+                {% endfor %}
 
-                <!-- 내용 -->
-                <div class="comment-content mt-2">
-                    {{ comment.content }}
+                <!-- 페이징 -->
+                {% if comments.pages > 1 %}
+                <div class="mt-4 text-center">
+                    {% if comments.has_prev %}
+                        <a href="?page={{ comments.prev_num }}#comments"
+                           class="btn btn-sm btn-outline-secondary">이전</a>
+                    {% endif %}
+
+                    <span class="mx-2 small text-muted">
+                        {{ comments.page }} / {{ comments.pages }}
+                    </span>
+
+                    {% if comments.has_next %}
+                        <a href="?page={{ comments.next_num }}#comments"
+                           class="btn btn-sm btn-outline-secondary">다음</a>
+                    {% endif %}
                 </div>
-
-                <!-- 수정 input -->
-                <input type="text"
-                       class="form-control edit-input mt-2"
-                       value="{{ comment.content }}"
-                       style="display:none;">
-
-                <!-- 버튼 -->
-                <div class="mt-2">
-                    <button class="btn btn-sm btn-dark save-btn"
-                            data-comment-id="{{ comment.id }}"
-                            style="display:none;">
-                        저장
-                    </button>
-
-                    <button class="btn btn-sm btn-secondary cancel-btn"
-                            style="display:none;">
-                        취소
-                    </button>
-
-                    <button class="comment-like-btn btn btn-sm btn-outline-secondary"
-                            data-comment-id="{{ comment.id }}">
-                        👍 (<span class="comment-like-count">
-                            {{ comment.likes|length }}
-                        </span>)
-                    </button>
-                </div>
-
-            </div>
-            {% endfor %}
-
-            <!-- 🔥 페이징 -->
-            {% if comments.pages > 1 %}
-            <div class="mt-4 text-center">
-
-                {% if comments.has_prev %}
-                    <a href="?page={{ comments.prev_num }}#comments"
-                       class="btn btn-sm btn-outline-secondary">이전</a>
                 {% endif %}
 
-                <span class="mx-2 small text-muted">
-                    {{ comments.page }} / {{ comments.pages }}
-                </span>
-
-                {% if comments.has_next %}
-                    <a href="?page={{ comments.next_num }}#comments"
-                       class="btn btn-sm btn-outline-secondary">다음</a>
-                {% endif %}
-
-            </div>
+            {% else %}
+                <p class="text-muted">아직 댓글이 없습니다</p>
             {% endif %}
 
-        {% else %}
-            <p class="text-muted">아직 댓글이 없습니다</p>
-        {% endif %}
+            <!-- 댓글 입력 -->
+            {% if logged_in %}
+            <form id="comment-form" class="mt-3">
+                <div class="input-group">
+                    <input type="text" id="comment-input" class="form-control">
+                    <button type="button" id="comment-submit" class="btn btn-dark">작성</button>
+                </div>
+            </form>
+            {% endif %}
 
-        <!-- 댓글 입력 -->
-        {% if logged_in %}
-        <form id="comment-form">
-            <div class="input-group">
-                <input type="text" id="comment-input" class="form-control">
-                <button type="button" id="comment-submit" class="btn btn-dark">작성</button>
-            </div>
-        </form>
-        {% endif %}
-
+        </div>
     </div>
 </div>
 

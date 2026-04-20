@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- 🔥 상단 탭 -->
+    <div class="mb-3">
+        <a href="/admin/reports"
+           class="btn btn-sm {{ 'btn-dark' if request.path == '/admin/reports' else 'btn-outline-secondary' }}">
+            🚨 신고관리
+        </a>
+
+        <a href="/admin/users"
+           class="btn btn-sm {{ 'btn-dark' if request.path == '/admin/users' else 'btn-outline-secondary' }}">
+            👤 계정관리
+        </a>
+    </div>
+    <h3>👤 계정 관리</h3>
+
+
+    <!-- 🔥 테이블 -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>아이디</th>
+                <th>닉네임</th>
+                <th>이메일</th>
+                <th>상태</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for u in users.items %}
+            <tr>
+                <td>{{ u.id }}</td>
+                <td>{{ u.username }}</td>
+                <td>{{ u.nickname }}</td>
+                <td>{{ u.email }}</td>
+
+                <td>
+                    {% if u.is_deleted %}
+                        <span class="badge bg-danger">탈퇴</span>
+                    {% elif u.is_banned %}
+                        <span class="badge bg-warning">정지</span>
+                    {% else %}
+                        <span class="badge bg-success">정상</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if not u.is_deleted %}
+
+                        {% if not u.is_banned %}
+                            <!-- 🔥 정지 -->
+                            <button class="btn btn-sm btn-warning"
+                                    onclick="banUser({{ u.id }})">
+                                정지
+                            </button>
+                        {% else %}
+                            <!-- 🔥 정지 해제 -->
+                            <button class="btn btn-sm btn-success"
+                                    onclick="unbanUser({{ u.id }})">
+                                정지 해제
+                            </button>
+                        {% endif %}
+
+                        <!-- 🔥 강제 탈퇴 -->
+                        <button class="btn btn-sm btn-danger"
+                                onclick="deleteUser({{ u.id }})">
+                            강제 탈퇴
+                        </button>
+
+                    {% else %}
+                        <span class="text-muted">처리됨</span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- 🔥 페이징 -->
+    <div class="text-center mt-3">
+
+        {% if users.has_prev %}
+            <a href="?page={{ users.prev_num }}" class="btn btn-sm btn-outline-secondary">이전</a>
+        {% endif %}
+
+        {{ users.page }} / {{ users.pages }}
+
+        {% if users.has_next %}
+            <a href="?page={{ users.next_num }}" class="btn btn-sm btn-outline-secondary">다음</a>
+        {% endif %}
+
+    </div>
+
+</div>
+
+<!-- 🔥 JS -->
+<script>
+function deleteUser(userId) {
+
+    if (!confirm("진짜 이 계정 탈퇴시킬까?")) return;
+
+    fetch(`/admin/user/delete/${userId}`, {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("탈퇴 처리 완료");
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+</script>
+<script>
+function banUser(userId) {
+
+    const reason = prompt("정지 사유를 입력하세요");
+    if (!reason) return;
+
+    const days = prompt("정지 기간 (일, 0이면 영구):");
+    if (!days) return;
+
+    fetch(`/admin/user/ban/${userId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            reason: reason,
+            days: days
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("정지 완료");
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+
+function unbanUser(userId) {
+
+    if (!confirm("정지를 해제하시겠습니까?")) return;
+
+    fetch(`/admin/user/unban/${userId}`, {
+        method: "POST"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("정지 해제 완료");
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+
+function deleteUser(userId) {
+
+    const reason = prompt("탈퇴 사유를 입력하세요:");
+    if (!reason) return;
+
+    if (!confirm("진짜 이 계정 탈퇴시킬까?")) return;
+
+    fetch(`/admin/user/delete/${userId}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            reason: reason
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert("탈퇴 처리 완료");
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+</script>
+{% endblock %}

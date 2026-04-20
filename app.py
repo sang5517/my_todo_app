@@ -63,7 +63,14 @@ def inject_user():
     return dict(
         logged_in=is_logged_in(),
         user=current_user(),
-        user_id=session.get('user_id')
+        user_id=session.get('user_id'),
+
+        CATEGORY_MAP = {
+            "general": "자유게시판",
+            "qna": "Q$A",
+            "notice": "공지사항",
+            "info": "정보공유"
+        }
     )
 
 # ✅ 로그인 필요시 redirect 처리 데코레이터
@@ -126,22 +133,46 @@ def google_login_process():
 
     user = User.query.filter_by(email=email).first()
 
-    # 🔥 탈퇴 계정 차단 (핵심)
-    if user and user.is_deleted:
-        if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
-            return "탈퇴 후 30일 이내 계정입니다. 로그인 불가"
-        else:
-            db.session.delete(user)
-            db.session.commit()
-            return "계정이 완전히 삭제되었습니다. 다시 가입해주세요"
-        
+    # ✅ 여기부터 시작
     if user:
+        # 1. 정지 체크
+        if user.is_banned:
+
+            # 자동 해제
+            if user.ban_until and datetime.utcnow() > user.ban_until:
+                user.is_banned = False
+                user.banned_at = None
+                user.ban_reason = None
+                user.ban_until = None
+                db.session.commit()
+            else:
+                if user.ban_until:
+                    remaining_days = (user.ban_until - datetime.utcnow()).days + 1
+                else:
+                    remaining_days = -1
+
+                return redirect(
+                    f"/login?error=banned&reason={user.ban_reason}&days={remaining_days}"
+                )
+
+        # 2. 탈퇴 체크
+        if user.is_deleted:
+            if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
+                return redirect("/login?error=deleted_30")
+            else:
+                db.session.delete(user)
+                db.session.commit()
+                return redirect("/login?error=deleted_done")
+
+        # 3. 로그인 처리
         if user.provider == "local":
             session['pending_link'] = email
             return redirect(url_for("social_link_confirm"))
         else:
             session['user_id'] = user.id
             return redirect("/")
+
+    # 🔥 신규 유저
     else:
         username = generate_unique_username(email.split("@")[0])
         nickname = generate_unique_nickname(name)
@@ -220,22 +251,47 @@ def kakao_login_process():
         return "이메일 없음 (동의 필요)"
 
     user = User.query.filter_by(email=email).first()
-    # 🔥 탈퇴 계정 차단
-    if user and user.is_deleted:
-        if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
-            return "탈퇴 후 30일 이내 계정입니다. 로그인 불가"
-        else:
-            db.session.delete(user)
-            db.session.commit()
-            return "계정이 완전히 삭제되었습니다. 다시 가입해주세요"
-        
+
+    # ✅ 여기부터 시작
     if user:
+        # 1. 정지 체크
+        if user.is_banned:
+
+            # 자동 해제
+            if user.ban_until and datetime.utcnow() > user.ban_until:
+                user.is_banned = False
+                user.banned_at = None
+                user.ban_reason = None
+                user.ban_until = None
+                db.session.commit()
+            else:
+                if user.ban_until:
+                    remaining_days = (user.ban_until - datetime.utcnow()).days + 1
+                else:
+                    remaining_days = -1
+
+                return redirect(
+                    f"/login?error=banned&reason={user.ban_reason}&days={remaining_days}"
+                )
+
+        # 2. 탈퇴 체크
+        if user.is_deleted:
+            if user.deleted_at and datetime.utcnow() - user.deleted_at < timedelta(days=30):
+                return redirect("/login?error=deleted_30")
+            else:
+                db.session.delete(user)
+                db.session.commit()
+                return redirect("/login?error=deleted_done")
+
+        # 3. 로그인 처리
         if user.provider == "local":
             session['pending_link'] = email
             return redirect(url_for("social_link_confirm"))
         else:
             session['user_id'] = user.id
             return redirect("/")
+
+    # 🔥 신규 유저
     else:
         username = generate_unique_username(email.split("@")[0])
         nickname = generate_unique_nickname(nickname)

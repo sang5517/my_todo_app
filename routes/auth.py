@@ -153,7 +153,26 @@ def login():
 
     if user.is_deleted:
         return jsonify({"success": False, "message": "탈퇴한 계정입니다."})
-    
+    if user.is_banned:
+
+        # 자동 해제
+        if user.ban_until and datetime.utcnow() > user.ban_until:
+            user.is_banned = False
+            user.banned_at = None
+            user.ban_reason = None
+            user.ban_until = None
+            db.session.commit()
+        else:
+            if user.ban_until:
+                remaining_days = (user.ban_until - datetime.utcnow()).days + 1
+            else:
+                remaining_days = -1
+
+            return jsonify({
+                "success": False,
+                "message": f"정지된 계정입니다.\n사유: {user.ban_reason}\n"
+                        + ("영구 정지" if remaining_days == -1 else f"{remaining_days}일 남음")
+            })
     if user.provider != "local":
         return jsonify({"message": "소셜 로그인 계정입니다", "success": False})
 
@@ -414,7 +433,10 @@ def delete_account():
 
     user = User.query.get(session['user_id'])
     password = request.form.get("password")
-
+    confirm_text = request.form.get("confirm")
+    if confirm_text != "탈퇴합니다":
+        return jsonify({"success" : False, "message": "확인 문구가 일치하지 않습니다"})
+    
     # 비밀번호 확인
     if user.provider == "local":
         if not check_password_hash(user.password, password):

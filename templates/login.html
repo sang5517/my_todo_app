@@ -73,4 +73,32 @@ document.getElementById('login-form').addEventListener('submit', function(e) {
     });
 });
 </script>
+<script>
+const params = new URLSearchParams(window.location.search);
+const error = params.get("error");
+
+if (error === "deleted_30") {
+    alert("탈퇴 후 30일 이내 계정입니다");
+}
+if (error === "deleted_done") {
+    alert("계정이 완전히 삭제되었습니다. 다시 가입해주세요");
+}
+
+// 🔥 URL 깔끔하게 (중요)
+if (error) {
+    window.history.replaceState({}, document.title, "/login");
+}
+
+const reason = params.get("reason");
+const days = params.get("days");
+
+if (error === "banned") {
+    if (days == -1) {
+        alert(`영구 정지된 계정입니다.\n사유: ${reason}`);
+    } else {
+        alert(`정지된 계정입니다.\n사유: ${reason}\n남은 기간: ${days}일`);
+    }
+}
+
+</script>
 {% endblock %}

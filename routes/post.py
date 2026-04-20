@@ -231,17 +231,28 @@ def detail(post_id):
     post = Post.query.get_or_404(post_id)
 
     page = request.args.get('page', 1, type=int)
-    
-    comments = Comment.query.filter_by(post_id=post_id)\
-                            .order_by(Comment.created_at.desc())\
-                            .paginate(page=page, per_page=5, error_out=False)
-    
-    if session.get('user_id'):
-        post.views += 1 # 조회수 증가
-        db.session.commit()
-        
-    return render_template('detail.html' , post=post , comments=comments)
+    sort = request.args.get('sort', 'latest')  # 🔥 추가
 
+    query = Comment.query.filter_by(post_id=post_id)
+
+    # 🔥 정렬 분기
+    if sort == "oldest":
+        query = query.order_by(Comment.created_at.asc())
+    else:  # latest
+        query = query.order_by(Comment.created_at.desc())
+
+    comments = query.paginate(page=page, per_page=5, error_out=False)
+
+    if session.get('user_id'):
+        post.views += 1
+        db.session.commit()
+
+    return render_template(
+        'detail.html',
+        post=post,
+        comments=comments,
+        sort=sort  # 🔥 이것도 넘겨줘야 버튼 상태 표시 가능
+    )
 
 @post_bp.route('/mypage/delete/<int:post_id>', methods=['POST'])
 @login_required

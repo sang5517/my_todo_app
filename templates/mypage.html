@@ -12,7 +12,16 @@
                 <hr>
 
                 <p><strong>아이디</strong> : {{ mask_username(user.username) }}</p>
-                <p><strong>닉네임</strong> : <span id="current-nickname">{{ user.nickname }}</span></p>
+                <p>
+                    <strong>닉네임</strong> : 
+                    <span id="current-nickname">{{ user.nickname }}</span>
+
+                    <button class="btn btn-sm btn-outline-secondary ms-2"
+                            data-bs-toggle="modal"
+                            data-bs-target="#nicknameModal">
+                        변경
+                    </button>
+                </p>
                 <p><strong>이메일</strong> : {{ mask_email(user.email) }}</p>
             </div>
 
@@ -96,6 +105,37 @@
   </div>
 </div>
 
+<!-- 닉네임 변경 모달 -->
+ <div class="modal fade" id="nicknameModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">닉네임 변경</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <input type="text" 
+               id="modal-nickname-input"
+               class="form-control mb-2"
+               placeholder="새 닉네임 입력">
+
+        <small class="text-muted">
+            2~15자 / 한글, 영문, 숫자 가능
+        </small>
+
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+        <button class="btn btn-dark" id="modal-nickname-btn">변경</button>
+      </div>
+
+    </div>
+  </div>
+</div>
 
 <!-- ========================= -->
 <!-- 🔥 JS -->
@@ -133,7 +173,7 @@ textInput.addEventListener("input", checkDeleteReady);
 // =========================
 btn.addEventListener("click", function () {
 
-    if (!confirm("진짜 마지막입니다. 탈퇴 진행할까요?")) return;
+    if (!confirm("탈퇴 시 모든 데이터가 삭제됩니다. 정말 탈퇴할까요?")) return;
 
     let bodyData = "confirm=" + encodeURIComponent(textInput.value);
 
@@ -160,6 +200,40 @@ btn.addEventListener("click", function () {
 
 });
 
+document.getElementById("modal-nickname-btn")?.addEventListener("click", function () {
+
+    const newNickname = document.getElementById("modal-nickname-input").value;
+
+    if (!newNickname) {
+        alert("닉네임을 입력하세요");
+        return;
+    }
+
+    fetch("/update-nickname", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: "nickname=" + encodeURIComponent(newNickname)
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+
+        if (data.success) {
+            // 🔥 화면 반영
+            document.getElementById("current-nickname").textContent = newNickname;
+
+            // 🔥 모달 닫기
+            const modal = bootstrap.Modal.getInstance(document.getElementById('nicknameModal'));
+            modal.hide();
+
+            // 🔥 입력값 초기화
+            document.getElementById("modal-nickname-input").value = "";
+        }
+    });
+
+});
 </script>
 
 {% endblock %}

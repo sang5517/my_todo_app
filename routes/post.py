@@ -10,6 +10,7 @@ from flask import jsonify
 from utils.auth import login_required
 from datetime import timedelta
 import html
+import json
 import uuid
 import os
 from werkzeug.utils import secure_filename
@@ -40,91 +41,109 @@ def write():
     if request.method == 'POST':
 
         title = request.form.get('title', '').strip()
-        content = request.form.get('content', '').strip()
+        raw_content = request.form.get('content', '')
         category = request.form.get('category', default_category)
 
         # 관리자 제한
         if category == 'notice' and not user.is_admin:
+            return jsonify({"success": False, "message": "관리자만 작성 가능"})
+
+        # 제목 체크
+        if not title:
+            return jsonify({"success": False, "message": "제목 입력해주세요"})
+
+        if len(title) > 100:
+            return jsonify({"success": False, "message": "제목은 100자 이하"})
+
+        # 🔥 핵심: Quill Delta JSON 파싱
+        try:
+            content = json.loads(raw_content)
+        except Exception as e:
             return jsonify({
                 "success": False,
-                "message": "관리자만 작성 가능"
+                "message": "내용 데이터 오류 (JSON 파싱 실패)"
             })
 
-        # 1. 빈값 체크
-        if not title or not content:
-            return jsonify({"success": False, "message": "제목과 내용을 입력해주세요"})
+        # 🔥 내용 비어있는지 체크 (텍스트 기준)
+        text_only = ""
+        try:
+            for op in content.get("ops", []):
+                if isinstance(op.get("insert"), str):
+                    text_only += op["insert"]
+        except:
+            pass
 
-        # 2. 글자수 제한
-        if len(title) > 100:
-            return jsonify({"success": False, "message": "제목은 100자 이하로 입력해주세요"})
+        if not text_only.strip():
+            return jsonify({"success": False, "message": "내용 입력해주세요"})
 
-        if len(content) > 2000:
-            return jsonify({"success": False, "message": "내용은 2000자 이하로 입력해주세요"})
+        if len(raw_content) > 10000:
+            return jsonify({"success": False, "message": "내용이 너무 깁니다"})
 
-        # 3. 욕설 필터
-        if contains_bad_word(title) or contains_bad_word(content):
-            return jsonify({"success": False, "message": "부적절한 단어가 포함되어 있습니다"})
+        # 금칙어 체크
+        if contains_bad_word(title) or contains_bad_word(text_only):
+            return jsonify({"success": False, "message": "부적절한 단어 포함"})
 
-        # 🔥 1단계: Post 먼저 저장 (id 생성)
+        # 🔥 저장 (JSON으로 다시 직렬화해서 저장)
         new_post = Post(
             title=title,
-            content=content,
+            content=json.dumps(content),   # ⭐ 핵심
             author_id=session['user_id'],
             category=category
         )
+
         db.session.add(new_post)
-        db.session.commit()  # 👉 여기서 id 생김
-
-        # 🔥 2단계: 파일 처리
-        files = request.files.getlist('files')
-
-        for file in files:
-            if file and file.filename != "":
-                original_filename = file.filename
-                safe_filename = secure_filename(file.filename)
-
-                filename = str(uuid.uuid4()) + "_" + safe_filename
-
-                upload_dir = os.path.join('static', 'uploads')
-                os.makedirs(upload_dir, exist_ok=True)
-
-                upload_path = os.path.join(upload_dir, filename)
-                file.save(upload_path)
-
-                ext = filename.rsplit('.', 1)[-1].lower()
-
-                if ext in ['jpg','jpeg','png','gif','webp']:
-                    file_type = 'image'
-                elif ext in ['mp4','webm','ogg']:
-                    file_type = 'video'
-                else:
-                    file_type = 'file'
-
-                db.session.add(File(
-                    file_path=filename,
-                    file_type=file_type,
-                    original_filename=original_filename,
-                    post_id=new_post.id
-                ))
-
         db.session.commit()
-
-        # 🔥 redirect 대신 JSON
-        if category == 'qna':
-            redirect_url = '/qna'
-        elif category == 'notice':
-            redirect_url = '/notice'
-        elif category == 'info':
-            redirect_url = '/info'
-        else:
-            redirect_url = '/'
 
         return jsonify({
             "success": True,
-            "redirect": redirect_url
+            "redirect": "/"
         })
 
     return render_template('write.html', default_category=default_category)
+
+@post_bp.route('/upload_image', methods=['POST'])
+@login_required
+def upload_image():
+    file = request.files.get('file')
+
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+    
+    filename = secure_filename(file.filename)
+    filename = str(uuid.uuid4()) + "_" + filename
+
+    upload_dir = os.path.join('static', 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filepath = os.path.join(upload_dir,filename)
+    file.save(filepath)
+
+    return jsonify({
+        "url": f"/static/uploads/{filename}"
+
+    })
+
+
+@post_bp.route('/upload_file', methods=['POST'])
+@login_required
+def upload_file():
+    file = request.files.get('file')
+
+    if not file:
+        return jsonify({"error": "파일 없음"}), 400
+
+    filename = secure_filename(file.filename)
+    filename = str(uuid.uuid4()) + "_" + filename
+
+    upload_dir = os.path.join('static', 'uploads')
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filepath = os.path.join(upload_dir, filename)
+    file.save(filepath)
+
+    return jsonify({
+        "url": f"/static/uploads/{filename}"
+    })
 
 @post_bp.route('/delete/<int:post_id>')
 @login_required

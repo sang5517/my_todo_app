@@ -3,58 +3,303 @@
 {% block title %}글 작성{% endblock %}
 
 {% block content %}
-<form method="POST" id="write-form" enctype="multipart/form-data">
+
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+
+<style>
+.embed-wrapper {
+    position: relative;
+    display: inline-block;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+/* 콘텐츠 */
+.embed-wrapper img,
+.embed-wrapper video {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 8px;
+    display: block;
+}
+
+/* 파일 링크 */
+.embed-wrapper a {
+    display: inline-block;
+    padding: 6px 10px;
+    background: #f2f2f2;
+    border-radius: 6px;
+}
+
+/* 선택 효과 */
+.embed-wrapper.selected {
+    outline: 3px solid #4CAF50;
+    filter: brightness(0.85);
+}
+
+/* 삭제 버튼 */
+.delete-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+
+    background: rgba(0,0,0,0.7);
+    color: white;
+
+    display: none;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.embed-wrapper.selected .delete-btn {
+    display: flex;
+}
+</style>
+
+<form method="POST" id="write-form">
 
     <div class="mb-3">
-        <input type="text" name="title"
-               id="title"
-               class="form-control"
-               placeholder="제목 입력"
-               maxlength="100">
+        <input type="text" id="title" class="form-control" placeholder="제목 입력">
     </div>
 
-    <div class="mb-3">
-        <textarea name="content"
-                  id="content"
-                  class="form-control"
-                  rows="6"
-                  placeholder="내용 입력"
-                  maxlength="2000"></textarea>
+    <!-- toolbar -->
+    <div id="toolbar">
+        <button class="ql-bold"></button>
+        <button class="ql-italic"></button>
+        <button class="ql-underline"></button>
+        <button class="ql-image"></button>
+        <button class="ql-video"></button>
+        <button type="button" id="file-btn">📎</button>
     </div>
 
-    <!-- 🔥 여러 파일 업로드 -->
-    <div class="mb-3">
-        <input type="file"
-               name="files"
-               id="files"
-               class="form-control"
-               multiple>
-    </div>
+    <div id="editor" style="height:350px;"></div>
 
-    <input type="hidden" name="category" value="{{ default_category }}">
-
-    <button type="submit" class="btn btn-dark w-100">
+    <button type="submit" class="btn btn-dark w-100 mt-3">
         작성하기
     </button>
-
 </form>
 
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+
 <script>
+const BlockEmbed = Quill.import('blots/block/embed');
+
+/* ===============================
+   1. Media Blot (핵심)
+================================*/
+class MediaBlot extends BlockEmbed {
+    static create(value) {
+        let node = super.create();
+        node.classList.add('embed-wrapper');
+
+        let el;
+
+        if (value.type === 'image') {
+            el = document.createElement('img');
+            el.src = value.url;
+        }
+
+        if (value.type === 'video') {
+            el = document.createElement('video');
+            el.src = value.url;
+            el.controls = true;
+        }
+
+        if (value.type === 'file') {
+            el = document.createElement('a');
+            el.href = value.url;
+            el.innerText = value.name;
+            el.target = "_blank";
+        }
+
+        let btn = document.createElement('div');
+        btn.className = 'delete-btn';
+        btn.innerText = '×';
+
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            node.remove();
+        };
+
+        node.onclick = () => {
+            document.querySelectorAll('.embed-wrapper')
+                .forEach(el => el.classList.remove('selected'));
+            node.classList.add('selected');
+        };
+
+        node.appendChild(el);
+        node.appendChild(btn);
+
+        return node;
+    }
+
+    static value(node) {
+
+        const img = node.querySelector('img');
+        const video = node.querySelector('video');
+        const a = node.querySelector('a');
+
+        if (img) {
+            return {
+                type: "image",
+                url: img.src
+            };
+        }
+
+        if (video) {
+            return {
+                type: "video",
+                url: video.src
+            };
+        }
+
+        if (a) {
+            return {
+                type: "file",
+                url: a.href,
+                name: a.innerText
+            };
+        }
+
+        return null;
+    }
+}
+
+MediaBlot.blotName = 'media';
+MediaBlot.tagName = 'div';
+
+Quill.register(MediaBlot);
+
+/* ===============================
+   2. Quill Init
+================================*/
+var quill = new Quill('#editor', {
+    theme: 'snow',
+    modules: {
+        toolbar: {
+            container: '#toolbar',
+            handlers: {
+                image: imageHandler,
+                video: videoHandler
+            }
+        }
+    }
+});
+
+/* ===============================
+   3. Image Upload
+================================*/
+function imageHandler() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.click();
+
+    input.onchange = async () => {
+        const file = input.files[0];
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/upload_image', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const range = quill.getSelection();
+
+        quill.insertEmbed(range.index, 'media', {
+            type: 'image',
+            url: data.url
+        });
+    };
+}
+
+/* ===============================
+   4. Video Upload
+================================*/
+function videoHandler() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'video/*';
+    input.click();
+
+    input.onchange = async () => {
+        const file = input.files[0];
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/upload_file', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const range = quill.getSelection();
+
+        quill.insertEmbed(range.index, 'media', {
+            type: 'video',
+            url: data.url
+        });
+    };
+}
+
+/* ===============================
+   5. File Upload
+================================*/
+document.getElementById('file-btn').addEventListener('click', () => {
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.click();
+
+    input.onchange = async () => {
+        const file = input.files[0];
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/upload_file', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const range = quill.getSelection();
+
+        quill.insertEmbed(range.index, 'media', {
+            type: 'file',
+            url: data.url,
+            name: file.name
+        });
+    };
+});
+
+/* ===============================
+   6. Submit (🔥 JSON 저장)
+================================*/
 document.getElementById('write-form').addEventListener('submit', function(e) {
     e.preventDefault();
 
+    const title = document.getElementById('title').value.trim();
+
     const formData = new FormData();
+    formData.append("title", title);
 
-    formData.append("title", document.getElementById('title').value);
-    formData.append("content", document.getElementById('content').value);
-    formData.append("category", document.querySelector('input[name="category"]').value);
-
-    // 🔥 여러 파일 처리
-    const files = document.getElementById('files').files;
-
-    for (let i = 0; i < files.length; i++) {
-        formData.append("files", files[i]);
-    }
+    // 🔥 중요: HTML 말고 Delta 저장
+    formData.append("content", JSON.stringify(quill.getContents()));
 
     fetch('/write', {
         method: 'POST',
@@ -62,11 +307,16 @@ document.getElementById('write-form').addEventListener('submit', function(e) {
     })
     .then(res => res.json())
     .then(data => {
+
+        console.log("🔥 서버 응답:", data);
+
         if (!data.success) {
             alert(data.message);
             return;
         }
-        window.location.href = data.redirect;
+
+        // 🔥 redirect 없을 경우 대비
+        window.location.href = data.redirect || "/";
     });
 });
 </script>

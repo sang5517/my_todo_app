@@ -1,10 +1,32 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+.post-content img,
+.post-content video {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.post-content a {
+    display: inline-block;
+    padding: 6px 10px;
+    background: #f2f2f2;
+    border-radius: 6px;
+    text-decoration: none;
+    color: black;
+}
+
+.embed-box {
+    margin: 10px 0;
+}
+</style>
+
 <div class="card shadow-sm mb-4">
     <div class="card-body">
-        
-        <!-- 제목 + 버튼 -->
+
+        <!-- ===================== 제목 ===================== -->
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h3 class="mb-0">{{ post.title }}</h3>
 
@@ -17,17 +39,17 @@
                 {% endif %}
 
                 {% if logged_in and (post.author_id == user_id or user.is_admin) %}
-                <a href="{{ url_for('post.update', post_id=post.id) }}" 
+                <a href="{{ url_for('post.update', post_id=post.id) }}"
                    class="btn btn-sm btn-outline-primary">수정</a>
 
-                <a href="{{ url_for('post.delete', post_id=post.id) }}" 
+                <a href="{{ url_for('post.delete', post_id=post.id) }}"
                    class="btn btn-sm btn-outline-danger"
                    onclick="return confirm('삭제하시겠습니까?');">삭제</a>
                 {% endif %}
             </div>
         </div>
 
-        <!-- 작성 정보 -->
+        <!-- ===================== 작성 정보 ===================== -->
         <div class="text-muted small mb-3">
             <strong>{{ post.author.nickname }}</strong>
             <span class="text-secondary">({{ post.author.username }})</span> |
@@ -35,38 +57,14 @@
             조회 {{ post.views }}
         </div>
 
-        <hr style="border-top: 2px solid #eee;">
+        <hr>
 
-        <!-- 본문 -->
-        <div class="mb-4" style="white-space: pre-line;">
-            {{ post.content }}
-        </div>
-        {% if post.file_path %}
-            <div class="mt-3">
+        <!-- ===================== 본문 ===================== -->
+        <div id="post-content" class="mb-4 post-content"></div>
 
-                {% if post.file_type == 'image' %}
-                    <img src="{{ url_for('static', filename='uploads/' + post.file_path) }}"
-                        class="img-fluid rounded">
-
-                {% elif post.file_type == 'video' %}
-                    <video controls class="w-100">
-                        <source src="{{ url_for('static', filename='uploads/' + post.file_path) }}">
-                    </video>
-
-                {% else %}
-                    <div class="mt-2">
-                        📎 
-                        <a href="{{ url_for('static', filename='uploads/' + post.file_path) }}" download>
-                            {{ post.original_filename }}
-                        </a>
-                    </div>
-                {% endif %}
-
-            </div>
-        {% endif %}
-        <!-- 좋아요 + 댓글수 -->
+        <!-- ===================== 좋아요 ===================== -->
         <div class="d-flex align-items-center gap-3 mb-3">
-            <button id="like-btn" 
+            <button id="like-btn"
                     data-post-id="{{ post.id }}"
                     class="btn btn-sm btn-outline-secondary">
                 👍 공감 <span id="like-count">{{ post.likes|length }}</span>
@@ -77,93 +75,67 @@
             </span>
         </div>
 
-        <hr style="border-top: 2px solid #eee;">
+        <hr>
 
-        <!-- 댓글 영역 -->
+        <!-- ===================== 댓글 ===================== -->
         <div class="bg-light p-3 rounded">
 
-            <!-- 댓글 헤더 -->
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 id="comments" class="mb-0">댓글</h5>
+            <h5>댓글</h5>
+            <!-- 🔥 여기 추가 (정렬 UI) -->
+            <div class="d-flex justify-content-end mb-2">
+                <div class="btn-group btn-group-sm">
+                    <a href="?sort=latest&page=1"
+                    class="btn btn-outline-dark {% if sort == 'latest' %}active{% endif %}">
+                        최신순
+                    </a>
 
-                <!-- 정렬 -->
-                <div>
-                    <a href="?sort=latest#comments"
-                       class="btn btn-sm btn-outline-secondary me-1">최신순</a>
-                    <a href="?sort=oldest#comments"
-                       class="btn btn-sm btn-outline-secondary">등록순</a>
+                    <a href="?sort=oldest&page=1"
+                    class="btn btn-outline-dark {% if sort == 'oldest' %}active{% endif %}">
+                        등록순
+                    </a>
                 </div>
             </div>
-
             {% if comments.items %}
                 {% for comment in comments.items %}
-                <div class="border-bottom py-3" style="border-color:#e5e5e5;" id="comment-{{ comment.id }}">
+                <div class="border-bottom py-3" id="comment-{{ comment.id }}">
 
-                    <!-- 작성자 -->
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between">
                         <div>
                             <strong>{{ comment.user.nickname }}</strong>
                             <span class="text-secondary">({{ comment.user.username }})</span>
                         </div>
 
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="d-flex gap-2">
                             <small class="text-muted">
                                 {{ (comment.created_at + timedelta(hours=9)).strftime('%Y-%m-%d %H:%M') }}
                             </small>
-
                             {% if logged_in and comment.user_id != user_id %}
                             <button class="btn btn-sm btn-outline-warning report-comment-btn"
                                     data-comment-id="{{ comment.id }}">
-                                🚨
+                                🚨 신고
                             </button>
                             {% endif %}
-
                             {% if user and (comment.user_id == user.id or user.is_admin) %}
                             <div>
                                 <a href="#" class="text-primary small edit-btn">수정</a>
-                                <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}" 
+                                <a href="{{ url_for('comment.delete_comment', comment_id=comment.id) }}"
                                    class="text-danger small"
-                                   onclick="return confirm('댓글 삭제하시겠습니까?');">삭제</a>
+                                   onclick="return confirm('삭제하시겠습니까?');">삭제</a>
                             </div>
                             {% endif %}
                         </div>
                     </div>
 
-                    <!-- 내용 -->
                     <div class="comment-content mt-2">
-                        {{ comment.content }}
+                        {{ comment.content | safe }}
                     </div>
-                    {% if comment.file_path %}
-                        <div class="mt-2">
 
-                            {% if comment.file_type == 'image' %}
-                                <img src="{{ url_for('static', filename='uploads/' + comment.file_path) }}"
-                                    class="img-fluid rounded" style="max-width:300px;">
-
-                            {% elif comment.file_type == 'video' %}
-                                <video controls style="max-width:300px;">
-                                    <source src="{{ url_for('static', filename='uploads/' + comment.file_path) }}">
-                                </video>
-
-                            {% else %}
-                                <div>
-                                    📎 
-                                    <a href="{{ url_for('static', filename='uploads/' + comment.file_path) }}" download>
-                                        {{ comment.original_filename }}
-                                    </a>
-                                </div>
-                            {% endif %}
-
-                        </div>
-                    {% endif %}
-                    <!-- 수정 input -->
                     <input type="text"
                            class="form-control edit-input mt-2"
                            value="{{ comment.content }}"
                            style="display:none;">
 
-                    <!-- 버튼 -->
-                    <div class="mt-2 d-flex align-items-center gap-2">
+                    <div class="mt-2 d-flex gap-2">
                         <button class="btn btn-sm btn-dark save-btn"
                                 data-comment-id="{{ comment.id }}"
                                 style="display:none;">저장</button>
@@ -173,61 +145,204 @@
 
                         <button class="comment-like-btn btn btn-sm btn-outline-secondary"
                                 data-comment-id="{{ comment.id }}">
-                            👍 공감 <span class="comment-like-count">
-                                {{ comment.likes|length }}
-                            </span>
+                            👍 공감 <span class="comment-like-count">{{ comment.likes|length }}</span>
                         </button>
                     </div>
 
                 </div>
                 {% endfor %}
-
-                <!-- 페이징 -->
                 {% if comments.pages > 1 %}
-                <div class="mt-4 text-center">
-                    {% if comments.has_prev %}
-                        <a href="?page={{ comments.prev_num }}#comments"
-                           class="btn btn-sm btn-outline-secondary">이전</a>
-                    {% endif %}
+                <nav class="mt-3">
+                    <ul class="pagination pagination-sm justify-content-center">
 
-                    <span class="mx-2 small text-muted">
-                        {{ comments.page }} / {{ comments.pages }}
-                    </span>
+                        <!-- 이전 -->
+                        {% if comments.has_prev %}
+                        <li class="page-item">
+                            <a class="page-link"
+                            href="?page={{ comments.prev_num }}&sort={{ sort }}">
+                                이전
+                            </a>
+                        </li>
+                        {% endif %}
 
-                    {% if comments.has_next %}
-                        <a href="?page={{ comments.next_num }}#comments"
-                           class="btn btn-sm btn-outline-secondary">다음</a>
-                    {% endif %}
-                </div>
+                        <!-- 페이지 번호 -->
+                        {% for p in comments.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                            {% if p %}
+                                <li class="page-item {% if p == comments.page %}active{% endif %}">
+                                    <a class="page-link"
+                                    href="?page={{ p }}&sort={{ sort }}">
+                                        {{ p }}
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+
+                        <!-- 다음 -->
+                        {% if comments.has_next %}
+                        <li class="page-item">
+                            <a class="page-link"
+                            href="?page={{ comments.next_num }}&sort={{ sort }}">
+                                다음
+                            </a>
+                        </li>
+                        {% endif %}
+
+                    </ul>
+                </nav>
                 {% endif %}
-
             {% else %}
-                <p class="text-muted">아직 댓글이 없습니다</p>
+                <p class="text-muted">아직 댓글 없음</p>
             {% endif %}
 
-            <!-- 댓글 입력 -->
             {% if logged_in %}
-            <form id="comment-form" class="mt-3" enctype="multipart/form-data">
-                <div class="input-group">
-                    <input type="text" id="comment-input" class="form-control">
-                    <input type="file" id="comment-file" class="form-control">
-                    <button type="button" id="comment-submit" class="btn btn-dark">작성</button>
-                </div>
-            </form>
+            <div class="input-group mt-3">
+                <input type="text" id="comment-input" class="form-control">
+                <input type="file" id="comment-file" class="form-control">
+                <button id="comment-submit" class="btn btn-dark">작성</button>
+            </div>
             {% endif %}
 
         </div>
     </div>
 </div>
 
-<!-- 좋아요 -->
+<!-- ===================== DELTA RENDER ===================== -->
+<script>
+function renderDelta(delta) {
+
+    console.log("🔥 renderDelta 들어옴:", delta);
+
+    if (!delta || !delta.ops) {
+        console.log("❌ delta 없음 or ops 없음");
+        return "<p>내용 없음</p>";
+    }
+
+    let html = "";
+
+    delta.ops.forEach((op, idx) => {
+
+        console.log(`👉 OP[${idx}]`, op);
+
+        const insert = op.insert;
+
+        // =========================
+        // 1. 텍스트
+        // =========================
+        if (typeof insert === "string") {
+
+            // 🔥 URL 자동 링크 변환
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+
+            let text = insert
+                .replace(/\n/g, "<br>")
+                .replace(urlRegex, (url) => {
+                    return `<a href="${url}" target="_blank">${url}</a>`;
+                });
+
+            html += text;
+        }
+
+        // =========================
+        // 2. Quill 이미지
+        // =========================
+        if (insert && insert.image) {
+            console.log("IMAGE:", insert.image);
+
+            html += `
+                <div class="embed-box">
+                    <img src="${insert.image}">
+                </div>
+            `;
+        }
+
+        // =========================
+        // 3. Quill 비디오
+        // =========================
+        if (insert && insert.video) {
+            console.log("VIDEO:", insert.video);
+
+            html += `
+                <div class="embed-box">
+                    <video src="${insert.video}" controls></video>
+                </div>
+            `;
+        }
+
+        // =========================
+        // 4. 커스텀 media
+        // =========================
+        if (insert && insert.media) {
+
+            console.log("MEDIA:", insert.media);
+
+            const m = insert.media;
+
+            if (m.type === "image") {
+                console.log("MEDIA IMAGE:", m.url);
+
+                html += `<div class="embed-box"><img src="${m.url}"></div>`;
+            }
+
+            if (m.type === "video") {
+                console.log("MEDIA VIDEO:", m.url);
+
+                html += `<div class="embed-box"><video src="${m.url}" controls></video></div>`;
+            }
+
+            if (m.type === "file") {
+                console.log("MEDIA FILE:", m.url);
+
+                html += `<div class="embed-box"><a href="${m.url}" target="_blank">📎 ${m.name}</a></div>`;
+            }
+        }
+    });
+
+    console.log("🔥 FINAL HTML:", html);
+
+    return html;
+}
+
+/* =========================
+   RAW 확인
+========================= */
+let raw = {{ post.content | tojson }};
+
+console.log("🔥 RAW FROM DB:", raw);
+
+/* =========================
+   파싱
+========================= */
+let delta;
+
+try {
+    delta = typeof raw === "string" ? JSON.parse(raw) : raw;
+} catch (e) {
+    console.log("❌ PARSE ERROR:", e);
+    delta = null;
+}
+
+console.log("🔥 PARSED DELTA:", delta);
+console.log("🔥 OPS:", delta?.ops);
+
+/* =========================
+   렌더
+========================= */
+document.getElementById("post-content").innerHTML = renderDelta(delta);
+</script>
+
+<!-- ===================== LIKE ===================== -->
 <script>
 document.getElementById('like-btn')?.addEventListener('click', function() {
+
     const isLoggedIn = {{ 'true' if logged_in else 'false' }};
     const postId = this.dataset.postId;
 
     if (!isLoggedIn) {
-        alert("로그인 후 이용 가능합니다.");
+        alert("로그인 필요");
         window.location.href = "/login";
         return;
     }
@@ -240,15 +355,16 @@ document.getElementById('like-btn')?.addEventListener('click', function() {
 });
 </script>
 
-<!-- 댓글 좋아요 -->
+<!-- ===================== COMMENT LIKE ===================== -->
 <script>
 document.querySelectorAll('.comment-like-btn').forEach(btn => {
     btn.addEventListener('click', function() {
+
         const isLoggedIn = {{ 'true' if logged_in else 'false' }};
         const commentId = this.dataset.commentId;
 
         if (!isLoggedIn) {
-            alert("로그인 후 이용 가능합니다.");
+            alert("로그인 필요");
             window.location.href = "/login";
             return;
         }
@@ -262,76 +378,7 @@ document.querySelectorAll('.comment-like-btn').forEach(btn => {
 });
 </script>
 
-<!-- 댓글 수정 -->
-<script>
-// 수정 버튼
-document.querySelectorAll('.edit-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        const parent = this.closest('.border-bottom');
-
-        parent.querySelector('.comment-content').style.display = 'none';
-        parent.querySelector('.edit-input').style.display = 'block';
-
-        parent.querySelector('.save-btn').style.display = 'inline-block';
-        parent.querySelector('.cancel-btn').style.display = 'inline-block'; // ⭐ 추가
-    });
-});
-
-// 저장 버튼
-document.querySelectorAll('.save-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-
-        const commentId = this.dataset.commentId;
-        const parent = this.closest('.border-bottom');
-        const newContent = parent.querySelector('.edit-input').value;
-
-        fetch(`/comment/update/${commentId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'content=' + encodeURIComponent(newContent)
-        })
-        .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-
-            if (data.success) {
-                parent.querySelector('.comment-content').textContent = newContent;
-
-                parent.querySelector('.comment-content').style.display = 'block';
-                parent.querySelector('.edit-input').style.display = 'none';
-
-                parent.querySelector('.save-btn').style.display = 'none';
-                parent.querySelector('.cancel-btn').style.display = 'none'; // ⭐ 추가
-            }
-        });
-
-    });
-});
-
-// 취소 버튼
-document.querySelectorAll('.cancel-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-
-        const parent = this.closest('.border-bottom');
-
-        const contentDiv = parent.querySelector('.comment-content');
-        const input = parent.querySelector('.edit-input');
-
-        // 원래 값 복구
-        input.value = contentDiv.textContent.trim();
-
-        contentDiv.style.display = 'block';
-        input.style.display = 'none';
-
-        parent.querySelector('.save-btn').style.display = 'none';
-        this.style.display = 'none';
-    });
-});
-</script>
+<!-- ===================== COMMENT WRITE ===================== -->
 <script>
 document.getElementById('comment-submit')?.addEventListener('click', function() {
 
@@ -342,9 +389,7 @@ document.getElementById('comment-submit')?.addEventListener('click', function() 
     const formData = new FormData();
     formData.append('content', content);
 
-    if (file) {
-        formData.append('file', file);
-    }
+    if (file) formData.append('file', file);
 
     fetch(`/comment/write/${postId}`, {
         method: 'POST',
@@ -352,41 +397,97 @@ document.getElementById('comment-submit')?.addEventListener('click', function() 
     })
     .then(res => res.json())
     .then(data => {
-        if (!data.success) {
-            alert(data.message);
-            return;
-        }
-
+        if (!data.success) return alert(data.message);
         location.reload();
     });
 });
 </script>
+
+<!-- ===================== COMMENT EDIT ===================== -->
+<script>
+document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const parent = this.closest('.border-bottom');
+
+        parent.querySelector('.comment-content').style.display = 'none';
+        parent.querySelector('.edit-input').style.display = 'block';
+        parent.querySelector('.save-btn').style.display = 'inline-block';
+        parent.querySelector('.cancel-btn').style.display = 'inline-block';
+    });
+});
+
+document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+
+        const commentId = this.dataset.commentId;
+        const parent = this.closest('.border-bottom');
+        const newContent = parent.querySelector('.edit-input').value;
+
+        fetch(`/comment/update/${commentId}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'content=' + encodeURIComponent(newContent)
+        })
+        .then(res => res.json())
+        .then(data => {
+
+            alert(data.message);
+
+            if (data.success) {
+                parent.querySelector('.comment-content').textContent = newContent;
+                parent.querySelector('.comment-content').style.display = 'block';
+                parent.querySelector('.edit-input').style.display = 'none';
+                parent.querySelector('.save-btn').style.display = 'none';
+                parent.querySelector('.cancel-btn').style.display = 'none';
+            }
+        });
+    });
+});
+
+document.querySelectorAll('.cancel-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+
+        const parent = this.closest('.border-bottom');
+
+        const contentDiv = parent.querySelector('.comment-content');
+        const input = parent.querySelector('.edit-input');
+
+        input.value = contentDiv.textContent.trim();
+
+        contentDiv.style.display = 'block';
+        input.style.display = 'none';
+
+        parent.querySelector('.save-btn').style.display = 'none';
+        this.style.display = 'none';
+    });
+});
+</script>
+
+<!-- ===================== REPORT ===================== -->
 <script>
 document.querySelectorAll('.report-post-btn').forEach(btn => {
     btn.addEventListener('click', function() {
 
         const postId = this.dataset.postId;
-        const reason = prompt("신고 사유를 입력하세요");
+        const reason = prompt("신고 사유");
 
         if (!reason) return;
 
         fetch(`/report/post/${postId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: 'reason=' + encodeURIComponent(reason)
         })
         .then(res => res.json())
-        .then(data => {
-            alert(data.message);
-
-           
-        });
+        .then(data => alert(data.message));
     });
 });
+</script>
+<script>
 document.querySelectorAll('.report-comment-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function () {
 
         const commentId = this.dataset.commentId;
         const reason = prompt("신고 사유를 입력하세요");
@@ -403,7 +504,10 @@ document.querySelectorAll('.report-comment-btn').forEach(btn => {
         .then(res => res.json())
         .then(data => {
             alert(data.message);
-
+        })
+        .catch(err => {
+            console.log(err);
+            alert("신고 실패");
         });
     });
 });

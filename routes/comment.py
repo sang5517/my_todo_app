@@ -6,6 +6,7 @@ from utils.auth import login_required
 from flask import jsonify
 from utils.filter import contains_bad_word
 from models.user import User
+from bs4 import BeautifulSoup
 import uuid
 import os
 from werkzeug.utils import secure_filename
@@ -19,11 +20,13 @@ def write_comment(post_id):
     content = request.form.get('content', '').strip()
     files = request.files.getlist('files')
 
+    text_only = BeautifulSoup(content, "html.parser").get_text()
+
     # 🔥 1. 검증
     if not content and not files:
         return jsonify({"success": False, "message": "댓글 또는 파일을 입력하세요"})
 
-    if len(content) > 300:
+    if len(text_only) > 300:
         return jsonify({"success": False, "message": "댓글은 300자 이하"})
 
     if content and contains_bad_word(content):

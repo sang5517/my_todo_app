@@ -145,6 +145,25 @@ def upload_file():
         "url": f"/static/uploads/{filename}"
     })
 
+@post_bp.route('/delete_temp_file', methods=['POST'])
+@login_required
+def delete_temp_file():
+    data = request.get_json()
+    url = data.get("url")
+
+    if not url:
+        return jsonify({"success": False})
+
+    # /static/uploads/파일명 추출
+    filename = url.split("/")[-1]
+
+    filepath = os.path.join('static', 'uploads', filename)
+
+    if os.path.exists(filepath):
+        os.remove(filepath)
+
+    return jsonify({"success": True})
+
 @post_bp.route('/delete/<int:post_id>')
 @login_required
 def delete(post_id):

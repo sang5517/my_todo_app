@@ -21,6 +21,62 @@
 .embed-box {
     margin: 10px 0;
 }
+
+/* 댓글 이미지 */
+.comment-content img,
+.embed-box img {
+    max-width: 300px;   /* 핵심 */
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* 댓글 영상 */
+.embed-box video {
+    max-width: 300px;
+    width: 100%;
+    border-radius: 8px;
+}
+.embed-wrapper {
+    position: relative;
+    display: inline-block;
+    margin: 10px 0;
+    cursor: pointer;
+}
+
+.embed-wrapper img,
+.embed-wrapper video {
+    width: 100%;
+    max-width: 300px;
+    border-radius: 8px;
+}
+
+.embed-wrapper.selected {
+    outline: 3px solid #4CAF50;
+}
+
+.delete-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+
+    width: 22px;
+    height: 22px;
+
+    border-radius: 50%;
+    background: rgba(0,0,0,0.7);
+    color: white;
+
+    display: none;
+    justify-content: center;
+    align-items: center;
+
+    cursor: pointer;
+}
+
+.embed-wrapper.selected .delete-btn {
+    display: flex;
+}
 </style>
 
 <div class="card shadow-sm mb-4">
@@ -130,6 +186,32 @@
                         {{ comment.content | safe }}
                     </div>
 
+                    {% if comment.files %}
+                    <div class="mt-2">
+                        {% for f in comment.files %}
+                            {% if f.file_type == 'image' %}
+                                <div class="embed-box">
+                                    <img src="{{ url_for('static', filename='uploads/' + f.file_path) }}">
+                                </div>
+
+                            {% elif f.file_type == 'video' %}
+                                <div class="embed-box">
+                                    <video controls>
+                                        <source src="{{ url_for('static', filename='uploads/' + f.file_path) }}">
+                                    </video>
+                                </div>
+
+                            {% else %}
+                                <div class="embed-box">
+                                    <a href="{{ url_for('static', filename='uploads/' + f.file_path) }}" target="_blank">
+                                        📎 {{ f.original_filename }}
+                                    </a>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
                     <input type="text"
                            class="form-control edit-input mt-2"
                            value="{{ comment.content }}"
@@ -199,10 +281,47 @@
             {% endif %}
 
             {% if logged_in %}
-            <div class="input-group mt-3">
-                <input type="text" id="comment-input" class="form-control">
-                <input type="file" id="comment-file" class="form-control">
-                <button id="comment-submit" class="btn btn-dark">작성</button>
+            <div class="comment-box mt-3">
+
+                <div id="comment-input"
+                    contenteditable="true"
+                    class="form-control"
+                    style="min-height:100px; max-height:300px; overflow-y:auto;">
+                </div>
+
+                <!-- 툴바 -->
+                <div class="d-flex justify-content-between align-items-center">
+
+                    <div class="d-flex gap-2">
+
+                        <!-- 파일 -->
+                        <input type="file" id="file-input" multiple hidden>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="document.getElementById('file-input').click()">
+                            📎 파일
+                        </button>
+
+                        <!-- 이미지 -->
+                        <input type="file" id="image-input" accept="image/*" multiple hidden>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="document.getElementById('image-input').click()">
+                            🖼 이미지
+                        </button>
+
+                        <!-- 동영상 -->
+                        <input type="file" id="video-input" accept="video/*" multiple hidden>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick="document.getElementById('video-input').click()">
+                            🎥 동영상
+                        </button>
+
+                    </div>
+
+                    <button id="comment-submit" class="btn btn-sm btn-dark">
+                        작성
+                    </button>
+
+                </div>
             </div>
             {% endif %}
 
@@ -382,22 +501,27 @@ document.querySelectorAll('.comment-like-btn').forEach(btn => {
 <script>
 document.getElementById('comment-submit')?.addEventListener('click', function() {
 
-    const content = document.getElementById('comment-input').value;
-    const file = document.getElementById('comment-file').files[0];
+    const submitBtn = this;
+    submitBtn.disabled = true;
+    submitBtn.textContent = "작성 중...";
+    const editor = document.getElementById("comment-input");
+    editor.focus()
+    const content = document.getElementById('comment-input').innerHTML;
     const postId = {{ post.id }};
-
-    const formData = new FormData();
-    formData.append('content', content);
-
-    if (file) formData.append('file', file);
 
     fetch(`/comment/write/${postId}`, {
         method: 'POST',
-        body: formData
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: 'content=' + encodeURIComponent(content)
     })
     .then(res => res.json())
     .then(data => {
-        if (!data.success) return alert(data.message);
+        if (!data.success) {
+            alert(data.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = "작성";
+            return;
+        }
         location.reload();
     });
 });
@@ -510,6 +634,184 @@ document.querySelectorAll('.report-comment-btn').forEach(btn => {
             alert("신고 실패");
         });
     });
+});
+</script>
+
+<script>
+
+function insertNodeAtCursor(node) {
+    const editor = document.getElementById("comment-input");
+
+    editor.focus();
+
+    const sel = window.getSelection();
+
+    if (!sel.rangeCount) {
+        editor.appendChild(node);
+        return;
+    }
+
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    range.insertNode(node);
+
+    range.setStartAfter(node);
+    range.collapse(true);
+
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+// 이미지
+document.getElementById("image-input").addEventListener("change", async function () {
+
+    for (let file of this.files) {
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/upload_image", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const el = createMediaBox(data.url, "image");
+
+        const editor = document.getElementById("comment-input");
+        editor.focus();
+
+        insertNodeAtCursor(el);                   // 🔥 핵심
+    }
+
+    this.value = "";
+});
+
+
+// 영상
+document.getElementById("video-input").addEventListener("change", async function () {
+
+    for (let file of this.files) {
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/upload_file", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const el = createMediaBox(data.url, "video");
+
+        const editor = document.getElementById("comment-input");
+        editor.focus();
+
+        insertNodeAtCursor(el);
+    }
+
+    this.value = "";
+});
+
+
+// 파일
+document.getElementById("file-input").addEventListener("change", async function () {
+
+    for (let file of this.files) {
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/upload_file", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+
+        const el = createMediaBox(data.url, "file", file.name);
+
+        const editor = document.getElementById("comment-input");
+        editor.focus();
+
+        insertNodeAtCursor(el);            // 🔥 핵심 (DOM 넣기)
+    }
+
+    this.value = "";
+});
+</script>
+<script>
+function createMediaBox(url, type, name="") {
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "embed-wrapper";
+
+    let el;
+
+    if (type === "image") {
+        el = document.createElement("img");
+        el.src = url;
+    }
+
+    if (type === "video") {
+        el = document.createElement("video");
+        el.src = url;
+        el.controls = true;
+    }
+
+    if (type === "file") {
+        el = document.createElement("a");
+        el.href = url;
+        el.innerText = name;
+        el.target = "_blank";
+    }
+
+    const btn = document.createElement("div");
+    btn.className = "delete-btn";
+    btn.innerText = "×";
+
+    // 🔥 삭제
+    btn.onclick = async (e) => {
+        e.stopPropagation();
+
+        await fetch("/delete_temp_file", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ url })
+        });
+
+        wrapper.remove();
+    };
+
+    // 🔥 선택 효과
+    wrapper.onclick = () => {
+        document.querySelectorAll(".embed-wrapper")
+            .forEach(el => el.classList.remove("selected"));
+
+        wrapper.classList.add("selected");
+    };
+
+    wrapper.appendChild(el);
+    wrapper.appendChild(btn);
+
+    return wrapper;
+}
+
+window.addEventListener("beforeunload", async () => {
+
+    const medias = document.querySelectorAll(".embed-box img, .embed-box video, .embed-box a");
+
+    for (let el of medias) {
+
+        let url = el.src || el.href;
+
+        await fetch("/delete_temp_file", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ url })
+        });
+    }
 });
 </script>
 {% endblock %}

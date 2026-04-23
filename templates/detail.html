@@ -19,6 +19,7 @@
 }
 
 .embed-box {
+    display: inline-block;  /* 🔥 핵심 */
     margin: 10px 0;
 }
 
@@ -37,46 +38,53 @@
     width: 100%;
     border-radius: 8px;
 }
-.embed-wrapper {
-    position: relative;
-    display: inline-block;
-    margin: 10px 0;
-    cursor: pointer;
-}
-
-.embed-wrapper img,
-.embed-wrapper video {
-    width: 100%;
+#comment-input img {
     max-width: 300px;
+    width: 100%;
+    height: auto;
     border-radius: 8px;
 }
 
-.embed-wrapper.selected {
-    outline: 3px solid #4CAF50;
+
+.embed-box {
+    display: inline-block;
+    position: relative;
+    user-select: none;
+    pointer-events: auto;
 }
+
 
 .delete-btn {
     position: absolute;
     top: 5px;
     right: 5px;
 
+    z-index: 9999;   /* 🔥 이거 핵심 */
+
+    background: rgba(0,0,0,0.6);
+    color: white;
+    border: none;
+    border-radius: 50%;
     width: 22px;
     height: 22px;
-
-    border-radius: 50%;
-    background: rgba(0,0,0,0.7);
-    color: white;
-
-    display: none;
-    justify-content: center;
-    align-items: center;
-
     cursor: pointer;
 }
 
-.embed-wrapper.selected .delete-btn {
-    display: flex;
+.delete-btn, .play-btn { pointer-events: auto; }
+
+.video-wrapper {
+    position: relative;
+    display: inline-block;
 }
+
+.video-player {
+    width: 300px;
+    display: block;
+    position: relative;
+    z-index: 1;
+}
+
+
 </style>
 
 <div class="card shadow-sm mb-4">
@@ -195,10 +203,18 @@
                                 </div>
 
                             {% elif f.file_type == 'video' %}
-                                <div class="embed-box">
-                                    <video controls>
-                                        <source src="{{ url_for('static', filename='uploads/' + f.file_path) }}">
+                                <div class="embed-box video-wrapper" contenteditable="false">
+
+                                    <video class="video-player" preload="metadata"
+                                        src="{{ url_for('static', filename='uploads/' + f.file_path) }}">
                                     </video>
+
+                                    <button type="button"
+                                            class="play-btn"
+                                            contenteditable="false",
+                                            tabindex="-1">▶
+                                    </button>
+
                                 </div>
 
                             {% else %}
@@ -331,6 +347,7 @@
 
 <!-- ===================== DELTA RENDER ===================== -->
 <script>
+let uploadedFiles = [];
 function renderDelta(delta) {
 
     console.log("🔥 renderDelta 들어옴:", delta);
@@ -503,25 +520,29 @@ document.getElementById('comment-submit')?.addEventListener('click', function() 
 
     const submitBtn = this;
     submitBtn.disabled = true;
-    submitBtn.textContent = "작성 중...";
-    const editor = document.getElementById("comment-input");
-    editor.focus()
-    const content = document.getElementById('comment-input').innerHTML;
-    const postId = {{ post.id }};
 
-    fetch(`/comment/write/${postId}`, {
+    const editor = document.getElementById("comment-input");
+    const content = editor.innerHTML;
+
+    fetch(`/comment/write/{{ post.id }}`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'content=' + encodeURIComponent(content)
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            content: content,
+            files: uploadedFiles
+        })
     })
     .then(res => res.json())
     .then(data => {
+
         if (!data.success) {
             alert(data.message);
             submitBtn.disabled = false;
-            submitBtn.textContent = "작성";
             return;
         }
+
         location.reload();
     });
 });
@@ -636,33 +657,11 @@ document.querySelectorAll('.report-comment-btn').forEach(btn => {
     });
 });
 </script>
-
+<!-- 파일업로드구현 스크립트 출발점  -->
 <script>
-
-function insertNodeAtCursor(node) {
-    const editor = document.getElementById("comment-input");
-
-    editor.focus();
-
-    const sel = window.getSelection();
-
-    if (!sel.rangeCount) {
-        editor.appendChild(node);
-        return;
-    }
-
-    const range = sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(node);
-
-    range.setStartAfter(node);
-    range.collapse(true);
-
-    sel.removeAllRanges();
-    sel.addRange(range);
-}
-// 이미지
 document.getElementById("image-input").addEventListener("change", async function () {
+
+    const editor = document.getElementById("comment-input");
 
     for (let file of this.files) {
 
@@ -675,143 +674,247 @@ document.getElementById("image-input").addEventListener("change", async function
         });
 
         const data = await res.json();
+        
+        const fileId = crypto.randomUUID();
 
-        const el = createMediaBox(data.url, "image");
-
-        const editor = document.getElementById("comment-input");
-        editor.focus();
-
-        insertNodeAtCursor(el);                   // 🔥 핵심
-    }
-
-    this.value = "";
-});
-
-
-// 영상
-document.getElementById("video-input").addEventListener("change", async function () {
-
-    for (let file of this.files) {
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch("/upload_file", {
-            method: "POST",
-            body: formData
+        uploadedFiles.push({
+            id: fileId,
+            url: data.url,
+            type: "image",
+            name: file.name
         });
 
-        const data = await res.json();
+        const wrapper = document.createElement("div");
+        wrapper.className = "embed-box";
+        wrapper.dataset.id = fileId;
 
-        const el = createMediaBox(data.url, "video");
+        const img = document.createElement("img");
+        img.src = data.url;
 
-        const editor = document.getElementById("comment-input");
-        editor.focus();
+        // ❌ 삭제 버튼
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "×";
+        delBtn.className = "delete-btn";
 
-        insertNodeAtCursor(el);
-    }
+        // 클릭 시 삭제
+        delBtn.onclick = () => removeFile(fileId, wrapper, data.url);
 
-    this.value = "";
-});
+        wrapper.appendChild(img);
+        wrapper.appendChild(delBtn);
 
-
-// 파일
-document.getElementById("file-input").addEventListener("change", async function () {
-
-    for (let file of this.files) {
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await fetch("/upload_file", {
-            method: "POST",
-            body: formData
-        });
-
-        const data = await res.json();
-
-        const el = createMediaBox(data.url, "file", file.name);
-
-        const editor = document.getElementById("comment-input");
-        editor.focus();
-
-        insertNodeAtCursor(el);            // 🔥 핵심 (DOM 넣기)
+        insertNodeAtCursor(wrapper);
+        insertNodeAtCursor(document.createElement("br"));
     }
 
     this.value = "";
 });
 </script>
 <script>
-function createMediaBox(url, type, name="") {
+document.getElementById("video-input").addEventListener("change", async function () {
 
-    const wrapper = document.createElement("div");
-    wrapper.className = "embed-wrapper";
+    const editor = document.getElementById("comment-input");
 
-    let el;
+    for (let file of this.files) {
 
-    if (type === "image") {
-        el = document.createElement("img");
-        el.src = url;
-    }
+        const formData = new FormData();
+        formData.append("file", file);
 
-    if (type === "video") {
-        el = document.createElement("video");
-        el.src = url;
-        el.controls = true;
-    }
-
-    if (type === "file") {
-        el = document.createElement("a");
-        el.href = url;
-        el.innerText = name;
-        el.target = "_blank";
-    }
-
-    const btn = document.createElement("div");
-    btn.className = "delete-btn";
-    btn.innerText = "×";
-
-    // 🔥 삭제
-    btn.onclick = async (e) => {
-        e.stopPropagation();
-
-        await fetch("/delete_temp_file", {
+        const res = await fetch("/upload_file", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ url })
+            body: formData
         });
 
-        wrapper.remove();
-    };
+        const data = await res.json();
 
-    // 🔥 선택 효과
-    wrapper.onclick = () => {
-        document.querySelectorAll(".embed-wrapper")
-            .forEach(el => el.classList.remove("selected"));
+        const fileId = crypto.randomUUID();
 
-        wrapper.classList.add("selected");
-    };
+        uploadedFiles.push({
+            id: fileId,
+            url: data.url,
+            type: "video",
+            name: file.name
+        });
 
-    wrapper.appendChild(el);
-    wrapper.appendChild(btn);
+        const wrapper = document.createElement("div");
+        wrapper.className = "embed-box video-wrapper";
+        wrapper.dataset.id = fileId;   // 🔥 이거 추가
 
-    return wrapper;
+        const video = document.createElement("video");
+        video.src = data.url;
+        video.className = "video-player";
+        video.preload = "metadata";
+        video.controls = false;
+
+        
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "×";
+        delBtn.className = "delete-btn";
+
+        delBtn.onclick = () => removeFile(fileId, wrapper, data.url);
+        wrapper.appendChild(video);
+        wrapper.appendChild(delBtn);
+        
+        
+
+        // 🔥 이게 반드시 있어야 화면에 보임
+        insertNodeAtCursor(wrapper);
+        insertNodeAtCursor(document.createElement("br"));
+    }
+
+    this.value = "";
+});
+</script>
+<script>
+document.getElementById("file-input").addEventListener("change", async function () {
+
+    const editor = document.getElementById("comment-input");
+
+    for (let file of this.files) {
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/upload_file", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        const fileId = crypto.randomUUID();
+
+        uploadedFiles.push({
+            id: fileId,
+            url: data.url,
+            type: "file",
+            name: file.name
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "embed-box";
+        wrapper.dataset.id = fileId;
+
+        const link = document.createElement("a");
+        link.href = data.url;
+        link.target = "_blank";
+        link.innerText = "📎 " + file.name;
+
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "×";
+        delBtn.className = "delete-btn";
+
+        delBtn.onclick = () => removeFile(fileId, wrapper, data.url);
+
+        wrapper.appendChild(link);
+        wrapper.appendChild(delBtn);
+
+        insertNodeAtCursor(wrapper);
+        insertNodeAtCursor(document.createElement("br"));
+    }
+
+    this.value = "";
+});
+</script>
+<script>
+function removeFile(fileId, wrapper, url) {
+
+    console.log("🗑 삭제:", fileId, url);
+
+    // 1) 화면에서 제거
+    wrapper.remove();
+
+    // 2) uploadedFiles에서 제거
+    uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
+
+    // 3) 서버 임시 파일 삭제
+    fetch("/delete_temp_file", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ url: url })
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("서버 삭제 결과:", data);
+    })
+    .catch(err => {
+        console.log("삭제 실패:", err);
+    });
 }
+document.addEventListener("selectionchange", function () {
+    console.log("✏️ selection changed");
+});
+document.getElementById("comment-input").addEventListener("focus", function () {
+    console.log("🎯 editor focus");
+});
+document.addEventListener("keydown", function (e) {
 
-window.addEventListener("beforeunload", async () => {
+    if (e.key !== "Backspace") return;
+    if (e.key === "Backspace") {
+        console.log("⌫ BACKSPACE pressed");
+    }
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return;
 
-    const medias = document.querySelectorAll(".embed-box img, .embed-box video, .embed-box a");
+    const range = selection.getRangeAt(0);
+    const node = range.startContainer;
 
-    for (let el of medias) {
+    // embed-box 찾기 (커서 기준)
+    const embed = node.nodeType === 3
+        ? node.parentElement.closest(".embed-box")
+        : node.closest?.(".embed-box");
+    
+    if (!embed) return;
 
-        let url = el.src || el.href;
+    // 🔥 브라우저 기본 삭제 완전 차단
+    e.preventDefault();
+    e.stopPropagation();
 
-        await fetch("/delete_temp_file", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ url })
-        });
+    console.log("🧠 embed-box 통째 삭제:", embed);
+
+    const fileId = embed.dataset.id;
+    const file = uploadedFiles.find(f => f.id === fileId);
+
+    if (file) {
+        removeFile(fileId, embed, file.url);
+    } else {
+        embed.remove();
     }
 });
 </script>
+<!-- 커서 위치에 넣는 함수 만들기 -->
+<script>
+function insertNodeAtCursor(node) {
+    const editor = document.getElementById("comment-input");
+
+    editor.focus(); // 🔥 핵심 추가
+
+    const selection = window.getSelection();
+
+    if (!selection.rangeCount) {
+        // 커서 없으면 맨 끝에 넣기
+        editor.appendChild(node);
+        return;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // 🔥 editor 밖이면 강제로 끝으로 이동
+    if (!editor.contains(range.commonAncestorContainer)) {
+        editor.appendChild(node);
+        return;
+    }
+
+    range.deleteContents();
+    range.insertNode(node);
+
+    range.setStartAfter(node);
+    range.setEndAfter(node);
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+</script>
+
 {% endblock %}

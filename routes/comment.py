@@ -17,22 +17,24 @@ comment_bp = Blueprint('comment', __name__)
 @login_required
 def write_comment(post_id):
 
-    content = request.form.get('content', '').strip()
-    files = request.files.getlist('files')
+    data = request.get_json()
+
+    content = data.get('content', '').strip()
+    files = data.get('files', [])
 
     text_only = BeautifulSoup(content, "html.parser").get_text()
 
-    # 🔥 1. 검증
+    # 🔥 검증
     if not content and not files:
         return jsonify({"success": False, "message": "댓글 또는 파일을 입력하세요"})
 
     if len(text_only) > 300:
         return jsonify({"success": False, "message": "댓글은 300자 이하"})
 
-    if content and contains_bad_word(content):
+    if contains_bad_word(content):
         return jsonify({"success": False, "message": "부적절한 단어 포함"})
 
-    # 🔥 2. 댓글 먼저 저장 (핵심)
+    # 🔥 댓글 저장
     comment = Comment(
         content=content,
         user_id=session['user_id'],
@@ -40,37 +42,28 @@ def write_comment(post_id):
     )
 
     db.session.add(comment)
-    db.session.commit()   # 👉 comment.id 생성됨
+    db.session.commit()
 
-    # 🔥 3. 파일 처리
-    for file in files:
-        if file and file.filename != "":
-            original_filename = file.filename
-            safe_filename = secure_filename(file.filename)
+    # 🔥 파일 저장 (URL 기반)
+    for url in files:
 
-            filename = str(uuid.uuid4()) + "_" + safe_filename
+        filename = url.split("/")[-1]
 
-            upload_dir = os.path.join('static', 'uploads')
-            os.makedirs(upload_dir, exist_ok=True)
+        ext = filename.rsplit('.', 1)[-1].lower()
 
-            upload_path = os.path.join(upload_dir, filename)
-            file.save(upload_path)
+        if ext in ['jpg','jpeg','png','gif','webp']:
+            file_type = 'image'
+        elif ext in ['mp4','webm','ogg']:
+            file_type = 'video'
+        else:
+            file_type = 'file'
 
-            ext = filename.rsplit('.', 1)[-1].lower()
-
-            if ext in ['jpg','jpeg','png','gif','webp']:
-                file_type = 'image'
-            elif ext in ['mp4','webm','ogg']:
-                file_type = 'video'
-            else:
-                file_type = 'file'
-
-            db.session.add(File(
-                file_path=filename,
-                file_type=file_type,
-                original_filename=original_filename,
-                comment_id=comment.id
-            ))
+        db.session.add(File(
+            file_path=filename,
+            file_type=file_type,
+            original_filename=filename,
+            comment_id=comment.id
+        ))
 
     db.session.commit()
 

@@ -145,25 +145,45 @@ def upload_file():
         "url": f"/static/uploads/{filename}"
     })
 
+
+
 @post_bp.route('/delete_temp_file', methods=['POST'])
 @login_required
 def delete_temp_file():
-    data = request.get_json()
-    url = data.get("url")
+    try:
+        data = request.get_json(silent=True)
 
-    if not url:
+        print("🔥 delete_temp_file 호출됨:", data)  # 🔥 이거 추가
+        # 🔥 sendBeacon 대응
+        if not data:
+            raw = request.data.decode()
+            if raw:
+                data = json.loads(raw)
+
+        url = data.get("url") if data else None
+
+        if not url:
+            return jsonify({"success": False})
+
+        filename = url.split("/")[-1]
+        filepath = os.path.join('static', 'uploads', filename)
+
+        if os.path.exists(filepath):
+            try:
+                os.remove(filepath)
+            except PermissionError:
+                import time
+                time.sleep(1)
+                try:
+                    os.remove(filepath)
+                except:
+                    print("❌ 삭제 실패 (사용중)")
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        print("삭제 오류:", e)
         return jsonify({"success": False})
-
-    # /static/uploads/파일명 추출
-    filename = url.split("/")[-1]
-
-    filepath = os.path.join('static', 'uploads', filename)
-
-    if os.path.exists(filepath):
-        os.remove(filepath)
-
-    return jsonify({"success": True})
-
 @post_bp.route('/delete/<int:post_id>')
 @login_required
 def delete(post_id):
